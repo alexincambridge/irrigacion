@@ -13,12 +13,18 @@ def dashboard():
 @routes.route("/data")
 @login_required
 def data():
-    t,h = read_dht()
-    db = get_db()
-    if t and h:
-        db.execute("INSERT INTO sensor_data(temperature,humidity) VALUES(?,?)",(t,h))
+    t, h = read_dht()
+
+    if t is not None and h is not None:
+        db = get_db()
+        db.execute(
+            "INSERT INTO sensor_data (temperature, humidity) VALUES (?, ?)",
+            (t, h)
+        )
         db.commit()
-    return jsonify({"temperature":t,"humidity":h})
+
+    return jsonify({"temperature": t, "humidity": h})
+
 
 @routes.route("/history")
 @login_required
@@ -28,7 +34,7 @@ def history():
         SELECT temperature, humidity, timestamp
         FROM sensor_data
         ORDER BY timestamp DESC
-        LIMIT 50
+        LIMIT 100
     """).fetchall()
 
     return jsonify([
