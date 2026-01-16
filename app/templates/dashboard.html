@@ -3,6 +3,20 @@
 <a href="/logout" class="logout">⏻ Logout</a>
 
 <h2>🌱 Dashboard de Irrigación</h2>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+</head>
+
+<div class="gauges">
+  <div id="tempGauge"></div>
+  <div id="humGauge"></div>
+</div>
+
+<div class="charts">
+  <canvas id="tempChart"></canvas>
+  <canvas id="humChart"></canvas>
+</div>
 
 <div class="card">
   <canvas id="tempChart"></canvas>
@@ -12,5 +26,5 @@
   <canvas id="humChart"></canvas>
 </div>
 
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/static/js/dashboard.js"></script>

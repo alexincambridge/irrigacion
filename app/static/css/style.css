@@ -11,3 +11,28 @@ body{font-family:sans-serif;background:#111;color:#eee;text-align:center}
   opacity:.7
 }
 .logout:hover{opacity:1}
+
+
+body{
+  background:#0f1115;
+  color:#eaeaea;
+  font-family:system-ui;
+  text-align:center;
+}
+
+.gauges{
+  display:flex;
+  justify-content:center;
+  gap:40px;
+  margin:30px 0;
+}
+
+#tempGauge,#humGauge{
+  width:220px;
+}
+
+canvas{
+  max-width:600px;
+  margin:30px auto;
+  display:block;
+}
