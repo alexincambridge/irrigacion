@@ -1,0 +1,4 @@
+flask
+flask-login
+adafruit-circuitpython-dht
+RPi.GPIO
