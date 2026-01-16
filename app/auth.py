@@ -9,6 +9,15 @@ class User(UserMixin):
         self.id = id
         self.username = username
 
+def get_user_by_id(user_id):
+    db = get_db()
+    row = db.execute(
+        "SELECT id, username FROM users WHERE id=?",
+        (user_id,)
+    ).fetchone()
+    return User(row[0], row[1]) if row else None
+
+
 @auth.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
@@ -20,6 +29,7 @@ def login():
         if u:
             login_user(User(u[0], u[1]))
             return redirect("/")
+
     return render_template("login.html")
 
 @auth.route("/logout")
