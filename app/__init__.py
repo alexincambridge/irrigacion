@@ -6,6 +6,7 @@ from app.routes import routes
 from app.config import SECRET_KEY
 import os
 
+
 def create_app():
     base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -14,6 +15,7 @@ def create_app():
         template_folder=os.path.join(base_dir, "templates"),
         static_folder=os.path.join(base_dir, "static")
     )
+
 
     app.secret_key = SECRET_KEY
     init_db()
@@ -30,3 +32,6 @@ def create_app():
     app.register_blueprint(routes)
 
     return app
+
+app.teardown_appcontext(close_db)
+

@@ -1,5 +1,44 @@
-<form method="post">
-<input name="username" placeholder="Usuario">
-<input name="password" type="password" placeholder="Password">
-<button>Login</button>
-</form>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Login | Irrigación</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="login-card">
+
+      <h1>🌱 Irrigación</h1>
+      <p class="subtitle">Acceso al sistema</p>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+
+      <form method="post">
+        <div class="field">
+          <input type="text" name="username" required>
+          <label>Usuario</label>
+        </div>
+
+        <div class="field">
+          <input type="password" name="password" required>
+          <label>Contraseña</label>
+        </div>
+
+        <button type="submit">Entrar</button>
+      </form>
+
+      <footer>
+        <small>Raspberry Pi IoT Dashboard</small>
+      </footer>
+
+    </div>
+  </div>
+</body>
+</html>
