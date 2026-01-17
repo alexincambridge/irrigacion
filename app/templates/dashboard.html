@@ -1,12 +1,9 @@
-<link rel="stylesheet" href="/static/css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<a href="/logout" class="logout">⏻ Logout</a>
+{% extends "base.html" %}
 
-<h2>🌱 Dashboard de Irrigación</h2>
-<head>
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+{% block title %}Dashboard{% endblock %}
 
-</head>
+{% block content %}
+<h2>Dashboard</h2>
 
 <div class="gauges">
   <div id="tempGauge"></div>
@@ -17,14 +14,8 @@
   <canvas id="tempChart"></canvas>
   <canvas id="humChart"></canvas>
 </div>
+{% endblock %}
 
-<div class="card">
-  <canvas id="tempChart"></canvas>
-</div>
-
-<div class="card">
-  <canvas id="humChart"></canvas>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block scripts %}
 <script src="/static/js/dashboard.js"></script>
+{% endblock %}

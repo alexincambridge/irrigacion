@@ -67,3 +67,17 @@ function updateDashboard() {
 
 setInterval(updateDashboard, 5000)
 updateDashboard()
+
+function updateDashboard() {
+  fetch('/latest')
+    .then(r => r.json())
+    .then(d => {
+      if (!d.temperature) return
+      tempGauge.updateSeries([d.temperature])
+      humGauge.updateSeries([d.humidity])
+    })
+
+  fetch('/history')
+    .then(r => r.json())
+    .then(updateCharts)
+}

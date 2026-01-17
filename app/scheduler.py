@@ -1,20 +1,17 @@
 import time
-from datetime import datetime
-from app.hardware import read_dht, water
+from app.hardware import read_dht
 from app.models import get_db
-from app.config import TEMP_MAX, HUM_MIN, WATER_TIME
 
-AUTO_MODE = True
-
-def scheduler_loop():
+def sensor_loop():
     while True:
-        if AUTO_MODE:
-            hour = datetime.now().hour
-            if 5 <= hour <= 7:
-                temp, hum = read_dht()
-                if temp and hum and (temp >= TEMP_MAX or hum <= HUM_MIN):
-                    water(WATER_TIME)
-                    db = get_db()
-                    db.execute("INSERT INTO irrigation_log(mode) VALUES('AUTO')")
-                    db.commit()
+        t, h = read_dht()
+
+        if t is not None and h is not None:
+            db = get_db()
+            db.execute(
+                "INSERT INTO sensor_data (temperature, humidity) VALUES (?, ?)",
+                (t, h)
+            )
+            db.commit()
+
         time.sleep(60)

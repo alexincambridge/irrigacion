@@ -1,47 +1,32 @@
-from flask import Blueprint, render_template, jsonify
-from flask_login import login_required
-from app.hardware import read_dht
-from app.models import get_db
-
-routes = Blueprint("routes", __name__)
-
 @routes.route("/")
 @login_required
 def dashboard():
     return render_template("dashboard.html")
 
-@routes.route("/data")
-@login_required
-def data():
-    t, h = read_dht()
-
-    if t is not None and h is not None:
-        db = get_db()
-        db.execute(
-            "INSERT INTO sensor_data (temperature, humidity) VALUES (?, ?)",
-            (t, h)
-        )
-        db.commit()
-
-    return jsonify({"temperature": t, "humidity": h})
-
-
 @routes.route("/history")
 @login_required
 def history():
+    return render_template("history.html")
+
+@routes.route("/settings")
+@login_required
+def settings():
+    return render_template("settings.html")
+
+@routes.route("/latest")
+@login_required
+def latest():
     db = get_db()
-    rows = db.execute("""
+    row = db.execute("""
         SELECT temperature, humidity, timestamp
         FROM sensor_data
         ORDER BY timestamp DESC
-        LIMIT 100
-    """).fetchall()
+        LIMIT 1
+    """).fetchone()
 
-    return jsonify([
-        {
-            "temperature": r[0],
-            "humidity": r[1],
-            "time": r[2]
-        } for r in reversed(rows)
-    ])
+    return jsonify({
+        "temperature": row[0] if row else None,
+        "humidity": row[1] if row else None,
+        "time": row[2] if row else None
+    })
 
