@@ -2,7 +2,7 @@ import time
 from app.hardware import read_dht
 from app.models import get_db
 
-def sensor_loop():
+def scheduler_loop():
     while True:
         t, h = read_dht()
 
