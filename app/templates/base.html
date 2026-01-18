@@ -8,11 +8,14 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  {% block head %}{% endblock %}
 </head>
 
 <body>
-
+  <header class="topbar">
+    <div class="logo">🌱 Irrigación</div>
+    <div class="datetime">{{ now_str }}</div>
+    <a href="/logout" class="logout">Salir</a>
+  </header>
   {% include "partials/navbar.html" %}
 
   <main class="container">

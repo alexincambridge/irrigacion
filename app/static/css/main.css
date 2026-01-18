@@ -1,0 +1,38 @@
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:#0f1115;
+  color:#eee;
+}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:14px 24px;
+  background:#151820;
+  border-bottom:1px solid #222;
+}
+
+.logo{
+  font-weight:600;
+}
+
+.datetime{
+  font-size:14px;
+  color:#aaa;
+}
+
+.logout{
+  color:#ff6b6b;
+  text-decoration:none;
+  font-size:14px;
+}
+
+.logout:hover{
+  text-decoration:underline;
+}
+
+.content{
+  padding:24px;
+}
