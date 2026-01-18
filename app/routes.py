@@ -9,21 +9,43 @@ routes = Blueprint("routes", __name__)
 def dashboard():
     return render_template("dashboard.html")
 
+from flask import Blueprint, jsonify
+from flask_login import login_required
+from app.models import get_db
+
+routes = Blueprint("routes", __name__)
+
 @routes.route("/latest")
 @login_required
 def latest():
     db = get_db()
+
     row = db.execute("""
-        SELECT temperature, humidity, timestamp
+        SELECT temperature, humidity, solar, pressure, ec, ph, timestamp
         FROM sensor_data
         ORDER BY timestamp DESC
         LIMIT 1
     """).fetchone()
 
+    if row is None:
+        return jsonify({
+            "temperature": None,
+            "humidity": None,
+            "solar": None,
+            "pressure": None,
+            "ec": None,
+            "ph": None,
+            "time": None
+        })
+
     return jsonify({
-        "temperature": row[0] if row else None,
-        "humidity": row[1] if row else None,
-        "time": row[2] if row else None
+        "temperature": row[0],
+        "humidity": row[1],
+        "solar": row[2],
+        "pressure": row[3],
+        "ec": row[4],
+        "ph": row[5],
+        "time": row[6]
     })
 
 @routes.route("/history")

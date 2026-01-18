@@ -56,3 +56,23 @@ body{
   font-size:16px;
   color:#aaa;
 }
+
+.sensor-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:16px;
+}
+
+.sensor-card{
+  background:#151820;
+  border-radius:14px;
+  padding:16px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,.35);
+}
+
+.sensor-card h4{
+  margin:0 0 10px;
+  font-size:14px;
+  color:#aaa;
+}

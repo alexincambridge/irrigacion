@@ -4,25 +4,46 @@
 
 {% block content %}
 
-<h2>Dashboard</h2>
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
 
-<div class="grid">
-  <div class="card">
-    <h3>Temperatura</h3>
+{% block content %}
+<h2>Panel de Sensores</h2>
+
+<div class="sensor-grid">
+  <div class="sensor-card">
+    <h4>Temperatura</h4>
     <div id="tempGauge"></div>
   </div>
 
-  <div class="card">
-    <h3>Humedad</h3>
+  <div class="sensor-card">
+    <h4>Humedad</h4>
     <div id="humGauge"></div>
+  </div>
+
+  <div class="sensor-card">
+    <h4>Radiación Solar</h4>
+    <div id="solarGauge"></div>
+  </div>
+
+  <div class="sensor-card">
+    <h4>Presión</h4>
+    <div id="pressureGauge"></div>
+  </div>
+
+  <div class="sensor-card">
+    <h4>EC</h4>
+    <div id="ecGauge"></div>
+  </div>
+
+  <div class="sensor-card">
+    <h4>pH</h4>
+    <div id="phGauge"></div>
   </div>
 </div>
 
-<div class="card">
-  <h3>Histórico</h3>
-  <div id="historyChart"></div>
-</div>
+<div id="historyChart"></div>
 
 <script src="/static/js/dashboard.js"></script>
-
 {% endblock %}
+
