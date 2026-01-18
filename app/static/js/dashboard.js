@@ -1,3 +1,5 @@
+// ---------- GAUGES ----------
+
 const tempGauge = new ApexCharts(
   document.querySelector("#tempGauge"),
   {
@@ -7,9 +9,7 @@ const tempGauge = new ApexCharts(
     plotOptions:{
       radialBar:{
         hollow:{ size:"65%" },
-        dataLabels:{
-          value:{ fontSize:"28px" }
-        }
+        dataLabels:{ value:{ fontSize:"28px" } }
       }
     }
   }
@@ -24,9 +24,7 @@ const humGauge = new ApexCharts(
     plotOptions:{
       radialBar:{
         hollow:{ size:"65%" },
-        dataLabels:{
-          value:{ fontSize:"28px" }
-        }
+        dataLabels:{ value:{ fontSize:"28px" } }
       }
     }
   }
@@ -35,10 +33,12 @@ const humGauge = new ApexCharts(
 tempGauge.render()
 humGauge.render()
 
+// ---------- HISTORY CHART ----------
+
 const historyChart = new ApexCharts(
   document.querySelector("#historyChart"),
   {
-    chart:{ type:"line", height:300 },
+    chart:{ type:"line", height:300, animations:{ enabled:true }},
     series:[
       { name:"Temperatura", data:[] },
       { name:"Humedad", data:[] }
@@ -49,29 +49,46 @@ const historyChart = new ApexCharts(
 
 historyChart.render()
 
-function updateData(){
-  fetch("/latest")
-    .then(r=>r.json())
-    .then(d=>{
-      if(!d.temperature) return
-      tempGauge.updateSeries([d.temperature])
-      humGauge.updateSeries([d.humidity])
-    })
+// ---------- AJAX FUNCTIONS ----------
 
-  fetch("/history")
-    .then(r=>r.json())
-    .then(rows=>{
-      historyChart.updateOptions({
-        series:[
-          { name:"Temperatura", data: rows.map(r=>r.temperature) },
-          { name:"Humedad", data: rows.map(r=>r.humidity) }
-        ],
-        xaxis:{
-          categories: rows.map(r=>r.time)
-        }
-      })
-    })
+async function updateLatest(){
+  try{
+    const r = await fetch("/latest")
+    const d = await r.json()
+    if(!d.temperature) return
+
+    tempGauge.updateSeries([d.temperature])
+    humGauge.updateSeries([d.humidity])
+  }catch(e){
+    console.error("Latest error", e)
+  }
 }
 
-updateData()
-setInterval(updateData, 60000)
+async function updateHistory(){
+  try{
+    const r = await fetch("/history")
+    const rows = await r.json()
+
+    historyChart.updateOptions({
+      series:[
+        { name:"Temperatura", data: rows.map(r=>r.temperature) },
+        { name:"Humedad", data: rows.map(r=>r.humidity) }
+      ],
+      xaxis:{
+        categories: rows.map(r=>r.time)
+      }
+    })
+  }catch(e){
+    console.error("History error", e)
+  }
+}
+
+// ---------- INTERVALS ----------
+
+// Real-time gauges
+updateLatest()
+setInterval(updateLatest, 3000)   // ⏱️ 3 segundos
+
+// Histórico
+updateHistory()
+setInterval(updateHistory, 60000) // ⏱️ 1 minuto
