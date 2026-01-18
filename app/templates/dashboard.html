@@ -3,23 +3,26 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
+
 <h2>Dashboard</h2>
-<div id="gauges"></div>
-{% endblock %}
 
-<div class="gauges">
-  <div id="tempGauge"></div>
-  <div id="humGauge"></div>
+<div class="grid">
+  <div class="card">
+    <h3>Temperatura</h3>
+    <div id="tempGauge"></div>
+  </div>
+
+  <div class="card">
+    <h3>Humedad</h3>
+    <div id="humGauge"></div>
+  </div>
 </div>
 
-<div class="charts">
-  <canvas id="tempChart"></canvas>
-  <canvas id="humChart"></canvas>
+<div class="card">
+  <h3>Histórico</h3>
+  <div id="historyChart"></div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script src="/static/js/dashboard.js"></script>
+
 {% endblock %}
-
-

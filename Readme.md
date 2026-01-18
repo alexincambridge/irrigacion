@@ -1,5 +1,8 @@
 🌱 Irrigación
 ![irrigation.jpg](images/irrigation.jpg)
+
+ESP32 + Sensores ──LoRa──► Raspberry Pi ──► SQLite ──► Dashboard
+
 ### Irrigación es un sistema IoT para el control inteligente de riego basado en Raspberry Pi, con interfaz web moderna y arquitectura modular orientada a producción.
 
 El sistema permite monitorizar sensores, programar riegos, registrar eventos y visualizar datos en tiempo real, con foco en escalabilidad y futuras integraciones.
@@ -72,3 +75,36 @@ Relés electrovalvulas
 🎯 Objetivo del proyecto.
 
 Crear un sistema de riego inteligente, robusto y extensible, válido tanto para uso doméstico como para evolución hacia entornos agrícolas distribuidos mediante ESP32 + LoRa.
+
+
+            ┌──────────────┐
+            │   Usuario    │
+            │   (Browser)  │
+            └──────┬───────┘
+                   │ HTTP
+                   ▼
+        ┌─────────────────────┐
+        │     Flask Web App    │
+        │  (Routes / Auth)    │
+        └──────┬──────────────┘
+               │ SQL (read)
+               ▼
+        ┌─────────────────────┐
+        │      SQLite DB      │
+        │  sensor_data        │
+        │  irrigation_log     │
+        │  users              │
+        └──────▲──────────────┘
+               │ SQL (write)
+        ┌──────┴──────────────┐
+        │   Scheduler Thread  │
+        │ (background worker)│
+        └──────┬──────────────┘
+               │ GPIO
+               ▼
+     ┌───────────────────────┐
+     │ Hardware (RPi Zero)   │
+     │ - DHT11               │
+     │ - Relé / Válvula      │
+     └───────────────────────┘
+

@@ -1,83 +1,77 @@
-// ===== GAUGES =====
-const tempGauge = new ApexCharts(document.querySelector("#tempGauge"), {
-  chart: { type: 'radialBar', height: 220 },
-  series: [0],
-  labels: ['Temperatura °C'],
-  plotOptions: {
-    radialBar: {
-      startAngle: -135,
-      endAngle: 135,
-      dataLabels: {
-        value: { fontSize: '24px' }
+const tempGauge = new ApexCharts(
+  document.querySelector("#tempGauge"),
+  {
+    chart:{ type:"radialBar", height:250 },
+    series:[0],
+    labels:["°C"],
+    plotOptions:{
+      radialBar:{
+        hollow:{ size:"65%" },
+        dataLabels:{
+          value:{ fontSize:"28px" }
+        }
       }
     }
   }
-})
+)
 
-const humGauge = new ApexCharts(document.querySelector("#humGauge"), {
-  chart: { type: 'radialBar', height: 220 },
-  series: [0],
-  labels: ['Humedad %'],
-  plotOptions: {
-    radialBar: {
-      startAngle: -135,
-      endAngle: 135,
-      dataLabels: {
-        value: { fontSize: '24px' }
+const humGauge = new ApexCharts(
+  document.querySelector("#humGauge"),
+  {
+    chart:{ type:"radialBar", height:250 },
+    series:[0],
+    labels:["%"],
+    plotOptions:{
+      radialBar:{
+        hollow:{ size:"65%" },
+        dataLabels:{
+          value:{ fontSize:"28px" }
+        }
       }
     }
   }
-})
+)
 
 tempGauge.render()
 humGauge.render()
 
-// ===== LINE CHARTS =====
-const tempChart = new Chart(document.getElementById("tempChart"), {
-  type: 'line',
-  data: { labels: [], datasets: [{ label: '°C', data: [], tension: 0.4 }] }
-})
+const historyChart = new ApexCharts(
+  document.querySelector("#historyChart"),
+  {
+    chart:{ type:"line", height:300 },
+    series:[
+      { name:"Temperatura", data:[] },
+      { name:"Humedad", data:[] }
+    ],
+    xaxis:{ categories:[] }
+  }
+)
 
-const humChart = new Chart(document.getElementById("humChart"), {
-  type: 'line',
-  data: { labels: [], datasets: [{ label: '%', data: [], tension: 0.4 }] }
-})
+historyChart.render()
 
-function updateDashboard() {
-  fetch('/history')
-    .then(r => r.json())
-    .then(data => {
-      if (!data.length) return
-
-      const last = data[data.length - 1]
-
-      tempGauge.updateSeries([last.temperature])
-      humGauge.updateSeries([last.humidity])
-
-      tempChart.data.labels = data.map(d => d.time)
-      tempChart.data.datasets[0].data = data.map(d => d.temperature)
-
-      humChart.data.labels = data.map(d => d.time)
-      humChart.data.datasets[0].data = data.map(d => d.humidity)
-
-      tempChart.update()
-      humChart.update()
-    })
-}
-
-setInterval(updateDashboard, 5000)
-updateDashboard()
-
-function updateDashboard() {
-  fetch('/latest')
-    .then(r => r.json())
-    .then(d => {
-      if (!d.temperature) return
+function updateData(){
+  fetch("/latest")
+    .then(r=>r.json())
+    .then(d=>{
+      if(!d.temperature) return
       tempGauge.updateSeries([d.temperature])
       humGauge.updateSeries([d.humidity])
     })
 
-  fetch('/history')
-    .then(r => r.json())
-    .then(updateCharts)
+  fetch("/history")
+    .then(r=>r.json())
+    .then(rows=>{
+      historyChart.updateOptions({
+        series:[
+          { name:"Temperatura", data: rows.map(r=>r.temperature) },
+          { name:"Humedad", data: rows.map(r=>r.humidity) }
+        ],
+        xaxis:{
+          categories: rows.map(r=>r.time)
+        }
+      })
+    })
 }
+
+updateData()
+setInterval(updateData, 60000)
