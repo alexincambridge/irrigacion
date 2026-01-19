@@ -1,14 +1,3 @@
-from flask import Blueprint, render_template, jsonify
-from flask_login import login_required
-from app.models import get_db
-
-routes = Blueprint("routes", __name__)
-
-@routes.route("/")
-@login_required
-def dashboard():
-    return render_template("dashboard.html")
-
 from flask import Blueprint, jsonify
 from flask_login import login_required
 from app.models import get_db
@@ -19,7 +8,6 @@ routes = Blueprint("routes", __name__)
 @login_required
 def latest():
     db = get_db()
-
     row = db.execute("""
         SELECT temperature, humidity, solar, pressure, ec, ph, timestamp
         FROM sensor_data
@@ -28,25 +16,10 @@ def latest():
     """).fetchone()
 
     if row is None:
-        return jsonify({
-            "temperature": None,
-            "humidity": None,
-            "solar": None,
-            "pressure": None,
-            "ec": None,
-            "ph": None,
-            "time": None
-        })
+        return jsonify({})
 
-    return jsonify({
-        "temperature": row[0],
-        "humidity": row[1],
-        "solar": row[2],
-        "pressure": row[3],
-        "ec": row[4],
-        "ph": row[5],
-        "time": row[6]
-    })
+    return jsonify(dict(row))
+
 
 @routes.route("/history")
 @login_required
@@ -59,10 +32,4 @@ def history():
         LIMIT 100
     """).fetchall()
 
-    return jsonify([
-        {
-            "temperature": r[0],
-            "humidity": r[1],
-            "time": r[2]
-        } for r in reversed(rows)
-    ])
+    return jsonify([dict(r) for r in reversed(rows)])

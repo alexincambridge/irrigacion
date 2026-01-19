@@ -1,19 +1,17 @@
 import sqlite3
+import os
 from flask import g
 
-DB_PATH = "database/irrigation.db"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "instance", "irrigacion.db")
 
 def get_db():
     if "db" not in g:
-        g.db = sqlite3.connect(
-            DB_PATH,
-            timeout=5,
-            check_same_thread=False
-        )
-        g.db.execute("PRAGMA journal_mode=WAL;")
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
     return g.db
 
 def close_db(e=None):
     db = g.pop("db", None)
-    if db:
+    if db is not None:
         db.close()
