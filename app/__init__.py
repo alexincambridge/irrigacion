@@ -1,7 +1,7 @@
 from flask import Flask
-from app.models import close_db
-from app.routes import routes
 from flask_login import LoginManager
+from app.auth import auth, init_login_manager
+from app.routes import routes
 
 def create_app():
     app = Flask(__name__)
@@ -11,8 +11,9 @@ def create_app():
     login_manager.login_view = "auth.login"
     login_manager.init_app(app)
 
-    app.register_blueprint(routes)
+    init_login_manager(login_manager)
 
-    app.teardown_appcontext(close_db)
+    app.register_blueprint(auth)
+    app.register_blueprint(routes)
 
     return app

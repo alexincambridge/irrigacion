@@ -1,9 +1,15 @@
 import sqlite3
 import os
 from flask import g
+from flask_login import UserMixin
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "instance", "irrigacion.db")
+
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = str(id)
+        self.username = username
 
 def get_db():
     if "db" not in g:

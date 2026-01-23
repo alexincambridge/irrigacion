@@ -2,7 +2,7 @@ import sqlite3
 import time
 import random
 
-DB_PATH = "instance/irrigation.db"
+DB_PATH = "instance/irrigacion.db"
 
 def scheduler_loop():
     while True:

@@ -1,0 +1,15 @@
+<header class="header">
+<h1>Irrigación</h1>
+<div id="datetime"></div>
+</header>
+
+
+<script>
+function updateTime(){
+const now = new Date();
+document.getElementById('datetime').innerText =
+now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+}
+updateTime();
+setInterval(updateTime, 1000);
+</script>

@@ -1,31 +1,22 @@
 <!DOCTYPE html>
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>{% block title %}Irrigación{% endblock %}</title>
-
-  <link rel="stylesheet" href="/static/css/style.css">
-
-
+<meta charset="UTF-8">
+<title>{% block title %}Irrigación{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
-
 <body>
-  <header class="topbar">
-    <div class="logo">🌱 Irrigación</div>
-    <div class="datetime">{{ now_str }}</div>
-    <a href="/logout" class="logout">Salir</a>
-  </header>
-  {% include "partials/navbar.html" %}
+{% include 'partials/header.html' %}
 
-  <main class="container">
-    {% block content %}{% endblock %}
-  </main>
 
-  {% include "partials/footer.html" %}
+<div class="layout">
+{% include 'partials/sidebar.html' %}
 
-  {% block scripts %}{% endblock %}
 
+<main class="content">
+{% block content %}{% endblock %}
+</main>
+</div>
 </body>
 </html>
