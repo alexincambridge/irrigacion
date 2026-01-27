@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
 import sqlite3
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
-DB_PATH = os.path.join(INSTANCE_DIR, "irrigacion.db")
+DB_PATH = os.path.join(BASE_DIR, "instance", "irrigacion.db")
 
-os.makedirs(INSTANCE_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
@@ -24,7 +22,15 @@ CREATE TABLE IF NOT EXISTS sensor_data (
 )
 """)
 
+cur.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+)
+""")
+
 conn.commit()
 conn.close()
 
-print(f"✔ Base de datos creada/verificada en: {DB_PATH}")
+print("✅ Base de datos inicializada correctamente")
