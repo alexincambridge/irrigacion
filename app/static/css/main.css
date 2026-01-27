@@ -7,3 +7,24 @@ body { margin:0; font-family:Arial, sans-serif; background:#f4f6f8; }
 .sidebar li a:hover { background:#1e293b; }
 .content { flex:1; padding:20px; }
 .gauge-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:20px; }
+
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+.card h3 {
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 16px;
+  color: #334155;
+}
