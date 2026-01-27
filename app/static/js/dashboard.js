@@ -1,3 +1,6 @@
+alert("dashboard.js cargado");
+
+
 function createGauge(el, max){
   const chart = new ApexCharts(
     document.querySelector(el),
