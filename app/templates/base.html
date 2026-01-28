@@ -1,26 +1,50 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>{% block title %}Irrigación{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <meta charset="UTF-8">
+  <title>{% block title %}Irrigación{% endblock %}</title>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 </head>
+
 <body>
-<li><a href="{{ url_for('routes.dashboard') }}">Dashboard</a></li>
-<li><a href="{{ url_for('routes.sensors') }}">Sensores</a></li>
+  <div class="layout">
+
+    <aside class="sidebar">
+      <h1>Irrigación</h1>
+      <nav>
+
+        <a href="{{ url_for('routes.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('routes.irrigation') }}">Riego</a>
+        <a href="{{ url_for('routes.schedule') }}">Programador</a>
+        <a href="{{ url_for('routes.irrigation_history') }}">Historico de riego</a>
 
 
-{% include 'partials/header.html' %}
+      </nav>
+    </aside>
 
+    <main class="main">
+      <header class="header">
+        <span id="datetime"></span>
+      </header>
 
-<div class="layout">
-{% include 'partials/sidebar.html' %}
+      <section class="content">
+        {% block content %}{% endblock %}
+      </section>
+    </main>
 
+  </div>
 
-<main class="content">
-{% block content %}{% endblock %}
-</main>
-</div>
+<script>
+  function updateTime(){
+    const now = new Date()
+    document.getElementById("datetime").innerText =
+      now.toLocaleDateString() + " " + now.toLocaleTimeString()
+  }
+  updateTime()
+  setInterval(updateTime, 1000)
+</script>
+
 </body>
 </html>

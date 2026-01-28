@@ -1,22 +1,15 @@
-import RPi.GPIO as GPIO
-import adafruit_dht
-import board
-import time
-from app.config import RELAY_PIN, DHT_PIN
+# Estado global simple (luego irá a BD)
+_irrigation_state = False
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(RELAY_PIN, GPIO.OUT)
-GPIO.output(RELAY_PIN, GPIO.HIGH)
+def irrigation_on():
+    global _irrigation_state
+    _irrigation_state = True
 
-dht = adafruit_dht.DHT11(board.D22)
+def irrigation_off():
+    global _irrigation_state
+    _irrigation_state = False
+    # aquí GPIO.output(RELAY_PIN, GPIO.LOW)
 
-def read_dht():
-    try:
-        return dht.temperature, dht.humidity
-    except Exception:
-        return None, None
+def irrigation_status():
+    return _irrigation_state
 
-def water(seconds):
-    GPIO.output(RELAY_PIN, GPIO.LOW)
-    time.sleep(seconds)
-    GPIO.output(RELAY_PIN, GPIO.HIGH)

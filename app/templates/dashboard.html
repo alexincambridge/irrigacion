@@ -1,45 +1,16 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-
 <h2>Estado del sistema</h2>
 
-<div class="card-grid">
-  <div class="card">
-    <h3>Temperatura</h3>
-    <div id="tempGauge"></div>
-  </div>
-
-  <div class="card">
-    <h3>Humedad</h3>
-    <div id="humGauge"></div>
-  </div>
-
-  <div class="card">
-    <h3>Radiación solar</h3>
-    <div id="solarGauge"></div>
-  </div>
-
-  <div class="card">
-    <h3>Presión</h3>
-    <div id="pressureGauge"></div>
-  </div>
-
-  <div class="card">
-    <h3>EC</h3>
-    <div id="ecGauge"></div>
-  </div>
-
-  <div class="card">
-    <h3>pH</h3>
-    <div id="phGauge"></div>
-  </div>
-</div>
-
-<h2>Histórico</h2>
-<div class="card">
-  <div id="historyChart"></div>
+<div class="grid">
+  <div class="card"><h3>Temperatura</h3><div id="g_temp"></div></div>
+  <div class="card"><h3>Humedad</h3><div id="g_hum"></div></div>
+  <div class="card"><h3>Radiación solar</h3><div id="g_solar"></div></div>
+  <div class="card"><h3>Presión</h3><div id="g_pressure"></div></div>
+  <div class="card"><h3>EC</h3><div id="g_ec"></div></div>
+  <div class="card"><h3>pH</h3><div id="g_ph"></div></div>
 </div>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Histórico de Riegos{% endblock %}
+
+{% block content %}
+<h2>Histórico de riegos</h2>
+
+<div class="grid-2">
+
+  <div class="card">
+    <h3>Duración por riego</h3>
+    <div id="irrigationChart"></div>
+    <p></p>
+
+  </div>
+
+  <div class="card">
+    <h3>Últimos riegos</h3>
+    <table>
+      <tr>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th>Duración (min)</th>
+      </tr>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r[0] }}</td>
+        <td>{{ r[1] or "En curso" }}</td>
+        <td>{{ r[2] }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="{{ url_for('static', filename='js/irrigation_history.js') }}"></script>
+{% endblock %}

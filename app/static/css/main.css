@@ -1,30 +1,70 @@
-body { margin:0; font-family:Arial, sans-serif; background:#f4f6f8; }
-.header { display:flex; justify-content:space-between; padding:15px 20px; background:#1e293b; color:#fff; }
-.layout { display:flex; }
-.sidebar { width:200px; background:#0f172a; min-height:100vh; }
-.sidebar ul { list-style:none; padding:0; }
-.sidebar li a { display:block; padding:12px 20px; color:#cbd5f5; text-decoration:none; }
-.sidebar li a:hover { background:#1e293b; }
-.content { flex:1; padding:20px; }
-.gauge-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:20px; }
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f1f5f9;
+}
 
+.layout {
+  display: flex;
+  height: 100vh;
+}
 
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+.sidebar {
+  width: 220px;
+  background: #0f172a;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar h1 {
+  font-size: 20px;
+}
+
+.sidebar a {
+  color: white;
+  text-decoration: none;
+  display: block;
+  margin-top: 15px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: white;
+  padding: 15px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.content {
+  padding: 20px;
 }
 
 .card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.05);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
 }
 
 .card h3 {
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 16px;
-  color: #334155;
+  margin: 0;
+  font-size: 15px;
+  color: #475569;
+}
+
+.value {
+  font-size: 32px;
+  font-weight: bold;
+  margin-top: 10px;
+  color: #0f172a;
 }

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Riego{% endblock %}
+
+{% block content %}
+<h2>Control de riego</h2>
+
+<div class="card">
+  <p>
+    Estado:
+    <strong id="status">--</strong>
+  </p>
+
+  <button id="btnOn">💧 Encender</button>
+  <button id="btnOff">⛔ Apagar</button>
+</div>
+
+<script src="{{ url_for('static', filename='js/irrigation.js') }}"></script>
+{% endblock %}

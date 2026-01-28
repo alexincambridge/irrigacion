@@ -30,6 +30,25 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
+# CREATE TABLE IF NOT EXISTS irrigation_schedule (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   start_time TEXT,      -- HH:MM
+#   duration INTEGER,     -- minutos
+#   enabled INTEGER DEFAULT 1
+# );
+
+CREATE TABLE IF NOT EXISTS irrigation_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  start_time DATETIME,
+  end_time DATETIME,
+  duration INTEGER
+);
+
+# CREATE TABLE irrigation_state (
+#   id INTEGER PRIMARY KEY,
+#   is_on INTEGER
+# );
+
 conn.commit()
 conn.close()
 

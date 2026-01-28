@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Programador{% endblock %}
+
+{% block content %}
+<h2>Programador de riego</h2>
+
+<div class="card">
+  <form method="post" action="{{ url_for('routes.schedule_add') }}">
+    Hora:
+    <input type="time" name="time" required>
+    Duración (min):
+    <input type="number" name="duration" min="1" required>
+    <button>Agregar</button>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <tr><th>Hora</th><th>Duración</th><th>Estado</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r[1] }}</td>
+      <td>{{ r[2] }} min</td>
+      <td>{{ "ON" if r[3] else "OFF" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}
