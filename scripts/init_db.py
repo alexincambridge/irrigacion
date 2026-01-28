@@ -49,6 +49,38 @@ CREATE TABLE IF NOT EXISTS irrigation_log (
 #   is_on INTEGER
 # );
 
+# CREATE TABLE IF NOT EXISTS water_consumption (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   irrigation_id INTEGER,
+#   liters REAL,
+#   cost REAL,
+#   timestamp DATETIME,
+#   FOREIGN KEY (irrigation_id) REFERENCES irrigation_log(id)
+# );
+
+# CREATE TABLE IF NOT EXISTS irrigation_zones (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   name TEXT NOT NULL,
+#   gpio_pin INTEGER NOT NULL,
+#   enabled INTEGER DEFAULT 1
+# );
+
+# INSERT INTO irrigation_zones (name, gpio_pin) VALUES
+# ('Jardín', 23),
+# ('Huerto', 24),
+# ('Goteo', 25);
+
+# tabla de eventos por zona
+# CREATE TABLE IF NOT EXISTS irrigation_events (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   zone_id INTEGER,
+#   start_time DATETIME,
+#   end_time DATETIME,
+#   duration INTEGER,
+#   FOREIGN KEY(zone_id) REFERENCES irrigation_zones(id)
+# );
+
+
 conn.commit()
 conn.close()
 

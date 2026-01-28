@@ -13,3 +13,17 @@ def irrigation_off():
 def irrigation_status():
     return _irrigation_state
 
+_active_zones = set()
+
+def zone_on(zone_id):
+    _active_zones.add(zone_id)
+    # GPIO.output(pin, GPIO.HIGH)
+
+def zone_off(zone_id):
+    _active_zones.discard(zone_id)
+    # GPIO.output(pin, GPIO.LOW)
+
+def zone_state(zone_id):
+    return zone_id in _active_zones
+
+

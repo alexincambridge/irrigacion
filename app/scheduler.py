@@ -7,6 +7,9 @@ import random
 
 DB_PATH = "instance/irrigacion.db"
 
+# CONSTANTS
+FLOW_RATE = 8.0        # litros por minuto
+WATER_COST = 0.002    # €/litro (ejemplo)
 
 _last_run = None
 
@@ -109,6 +112,19 @@ def scheduler_loop():
                 """, (end_time,))
                 conn.commit()
 
+                liters = duration * FLOW_RATE
+                cost = liters * WATER_COST
+
+                cur.execute("""
+                    INSERT INTO water_consumption (irrigation_id, liters, cost, timestamp)
+                    VALUES (
+                      (SELECT id FROM irrigation_log ORDER BY id DESC LIMIT 1),
+                      ?, ?, ?
+                    )
+                """, (liters, cost, end_time))
+                conn.commit()
+
+
             conn.close()
 
         except Exception as e:
@@ -116,3 +132,4 @@ def scheduler_loop():
 
         # ⏲️ Revisar cada 30 segundos
         time.sleep(30)
+

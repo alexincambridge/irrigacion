@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Consumo de Agua{% endblock %}
+
+{% block content %}
+<h2>Consumo de agua</h2>
+
+<div class="grid-2">
+
+  <div class="card big">
+    <h3>Total consumido</h3>
+    <p class="metric">{{ "%.1f"|format(liters) }} L</p>
+    <p class="metric-sub">{{ "%.2f"|format(cost) }} €</p>
+  </div>
+
+  <div class="card">
+    <h3>Histórico</h3>
+    <div id="waterChart"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script src="{{ url_for('static', filename='js/water.js') }}"></script>
+{% endblock %}

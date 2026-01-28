@@ -4,37 +4,41 @@
   <meta charset="UTF-8">
   <title>{% block title %}Irrigación{% endblock %}</title>
   <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=999">
+
 </head>
 
 <body>
   <div class="layout">
 
     <aside class="sidebar">
-      <h1>Irrigación</h1>
+      <h2>🌱 Irrigación</h2>
+
       <nav>
-
         <a href="{{ url_for('routes.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('routes.irrigation') }}">Riego</a>
-        <a href="{{ url_for('routes.schedule') }}">Programador</a>
-        <a href="{{ url_for('routes.irrigation_history') }}">Historico de riego</a>
-
-
+        <a href="{{ url_for('routes.water_dashboard') }}">Consumo</a>
+        <a href="{{ url_for('routes.irrigation') }}">Irigation</a>
+        <a href="{{ url_for('routes.irrigation_history') }}">Histórico</a>
       </nav>
+
+      <div class="sidebar-bottom">
+        <button id="themeToggle">🌙 / ☀️</button>
+        <a class="logout" href="{{ url_for('auth.logout') }}">Salir</a>
+      </div>
     </aside>
 
-    <main class="main">
-      <header class="header">
-        <span id="datetime"></span>
-      </header>
-
-      <section class="content">
-        {% block content %}{% endblock %}
-      </section>
+    <main>
+      {% block content %}{% endblock %}
     </main>
 
   </div>
+
+  {% block scripts %}{% endblock %}
+</body>
 
 <script>
   function updateTime(){
