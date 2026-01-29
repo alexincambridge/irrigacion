@@ -1,6 +1,7 @@
-// ---------- GAUGES ----------
+console.log("dashboard.js cargado")
 
 function gauge(el, label){
+  if(!el) return null
   return new ApexCharts(el,{
     chart:{ type:"radialBar", height:240 },
     series:[0],
@@ -8,53 +9,69 @@ function gauge(el, label){
     plotOptions:{
       radialBar:{
         hollow:{ size:"70%" },
-        dataLabels:{
-          value:{ fontSize:"26px" }
-        }
+        dataLabels:{ value:{ fontSize:"26px" } }
       }
     }
   })
 }
 
-
+// ---------- INIT ----------
 const tempGauge = gauge(document.querySelector("#tempGauge"), "°C")
 const humGauge  = gauge(document.querySelector("#humGauge"), "%")
 const solGauge  = gauge(document.querySelector("#solarGauge"), "W/m²")
 
-tempGauge.render()
-humGauge.render()
-solGauge.render()
+tempGauge && tempGauge.render()
+humGauge  && humGauge.render()
+solGauge  && solGauge.render()
 
-// ---------- HISTORY ----------
-const historyChart = new ApexCharts(
-  document.querySelector("#historyChart"), {
-    chart:{ type:"line", height:300 },
-    series:[
-      { name:"Temp", data:[] },
-      { name:"Hum", data:[] }
-    ],
-    xaxis:{ categories:[] }
-})
-historyChart.render()
+const historyEl = document.querySelector("#historyChart")
+const historyChart = historyEl
+  ? new ApexCharts(historyEl,{
+      chart:{ type:"line", height:300 },
+      series:[
+        { name:"Temp", data:[] },
+        { name:"Hum", data:[] }
+      ],
+      xaxis:{ categories:[] }
+    })
+  : null
 
-// ---------- AJAX ----------
+historyChart && historyChart.render()
+
+// ---------- DATA ----------
 async function refresh(){
-  const r = await fetch("/dashboard/data")
-  const d = await r.json()
+  try{
+    const r = await fetch("/dashboard/data")
+    if(!r.ok) return
 
-  tempGauge.updateSeries([d.temperature])
-  humGauge.updateSeries([d.humidity])
-  solGauge.updateSeries([d.solar])
+    const d = await r.json()
 
-  document.getElementById("kpiTemp").innerText = d.temperature
-  document.getElementById("kpiHum").innerText = d.humidity
-  document.getElementById("kpiSolar").innerText = d.solar
-  document.getElementById("kpiWater").innerText = d.water_liters.toFixed(1)
+    if(tempGauge && d.temperature != null)
+      tempGauge.updateSeries([d.temperature])
 
-  document.getElementById("datetime").innerText =
-    new Date(d.time).toLocaleString()
+    if(humGauge && d.humidity != null)
+      humGauge.updateSeries([d.humidity])
 
+    if(solGauge && d.solar != null)
+      solGauge.updateSeries([d.solar])
+
+    const set = (id, val) => {
+      const el = document.getElementById(id)
+      if(el && val != null) el.innerText = val
+    }
+
+    set("kpiTemp", d.temperature)
+    set("kpiHum", d.humidity)
+    set("kpiSolar", d.solar)
+
+    if(d.water_liters != null)
+      set("kpiWater", d.water_liters.toFixed(1))
+
+  }catch(e){
+    console.error("Dashboard refresh error", e)
+  }
 }
 
+// ---------- LOOP ----------
 refresh()
 setInterval(refresh, 5000)

@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Irrigación{% endblock %}</title>
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=999">
-
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
@@ -21,7 +19,7 @@
       <nav>
         <a href="{{ url_for('routes.dashboard') }}">Dashboard</a>
         <a href="{{ url_for('routes.water_dashboard') }}">Consumo</a>
-        <a href="{{ url_for('routes.irrigation') }}">Irigation</a>
+        <a href="{{ url_for('routes.irrigation') }}">Irrigation</a>
         <a href="{{ url_for('routes.irrigation_history') }}">Histórico</a>
       </nav>
 
@@ -32,23 +30,27 @@
     </aside>
 
     <main>
+      <div id="datetime"></div>
       {% block content %}{% endblock %}
     </main>
 
   </div>
 
   {% block scripts %}{% endblock %}
-</body>
 
-<script>
-  function updateTime(){
-    const now = new Date()
-    document.getElementById("datetime").innerText =
-      now.toLocaleDateString() + " " + now.toLocaleTimeString()
-  }
-  updateTime()
-  setInterval(updateTime, 1000)
-</script>
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  <script>
+    function updateTime(){
+      const now = new Date()
+      const el = document.getElementById("datetime")
+      if(el){
+        el.innerText =
+          now.toLocaleDateString() + " " + now.toLocaleTimeString()
+      }
+    }
+    updateTime()
+    setInterval(updateTime, 1000)
+  </script>
 
 </body>
 </html>

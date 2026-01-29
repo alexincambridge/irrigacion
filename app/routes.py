@@ -105,10 +105,27 @@ def irrigation_toggle(zone_id):
     return jsonify({"status": "ok"})
 
 
+# @routes.route("/irrigation/status")
+# @login_required
+# def irrigation_status_api():
+#     return jsonify({"on": irrigation_status()})
+
 @routes.route("/irrigation/status")
 @login_required
-def irrigation_status_api():
-    return jsonify({"on": irrigation_status()})
+def irrigation_status():
+    from app.hardware import zone_state
+    db = get_db()
+
+    zones = db.execute("""
+        SELECT id, name FROM irrigation_zones
+    """).fetchall()
+
+    return jsonify([
+        {
+            "id": z[0],
+            "on": zone_state(z[0])
+        } for z in zones
+    ])
 
 @routes.route("/irrigation/on", methods=["POST"])
 @login_required

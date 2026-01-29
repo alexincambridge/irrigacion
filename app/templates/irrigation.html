@@ -6,12 +6,22 @@
 
 <div class="zones-grid">
   {% for z in zones %}
-  <div class="zone-card">
-    <img src="{{ url_for('static', filename='img/valve.png') }}">
+  <div class="zone-card" id="zone-{{ z[0] }}">
+
+    <div class="valve-wrapper">
+      <img class="valve-icon"
+           src="{{ url_for('static', filename='img/valve.png') }}">
+    </div>
+
     <h3>{{ z[1] }}</h3>
+
+    <div class="zone-status">APAGADO</div>
+    <div class="zone-timer" id="timer-{{ z[0] }}">00:00</div>
+
     <button onclick="toggleZone({{ z[0] }})">
       Activar / Desactivar
     </button>
+
   </div>
   {% endfor %}
 </div>

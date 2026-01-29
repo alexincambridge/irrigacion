@@ -37,12 +37,12 @@ CREATE TABLE IF NOT EXISTS users (
 #   enabled INTEGER DEFAULT 1
 # );
 
-CREATE TABLE IF NOT EXISTS irrigation_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  start_time DATETIME,
-  end_time DATETIME,
-  duration INTEGER
-);
+# CREATE TABLE IF NOT EXISTS irrigation_log (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   start_time DATETIME,
+#   end_time DATETIME,
+#   duration INTEGER
+# );
 
 # CREATE TABLE irrigation_state (
 #   id INTEGER PRIMARY KEY,

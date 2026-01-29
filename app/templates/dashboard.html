@@ -3,10 +3,8 @@
 
 {% block content %}
 
-
 <div class="header-bar">
   <h2>🌱 Sistema de Irrigación</h2>
-  <span id="datetime" class="muted"></span>
 </div>
 
 <div class="grid-4">
@@ -28,7 +26,6 @@
   </div>
 </div>
 
-
 <div class="grid-3">
   <div class="card"><div id="tempGauge"></div></div>
   <div class="card"><div id="humGauge"></div></div>
@@ -43,6 +40,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
