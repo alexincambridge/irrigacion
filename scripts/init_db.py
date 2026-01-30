@@ -79,6 +79,9 @@ CREATE TABLE IF NOT EXISTS users (
 #   duration INTEGER,
 #   FOREIGN KEY(zone_id) REFERENCES irrigation_zones(id)
 # );
+#
+# ALTER TABLE irrigation_zones ADD COLUMN is_active INTEGER DEFAULT 0;
+# ALTER TABLE irrigation_zones ADD COLUMN started_at TEXT;
 
 
 conn.commit()

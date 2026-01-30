@@ -13,6 +13,16 @@ WATER_COST = 0.002    # €/litro (ejemplo)
 
 _last_run = None
 
+def safe_shutdown():
+    # db = get_db()
+    db = DB_PATH
+    db.execute("""
+        UPDATE irrigation_zones
+        SET is_active=0, started_at=NULL
+    """)
+    db.commit()
+
+    # GPIO LOW en todos los relés
 
 
 def check_schedule(cur):
