@@ -30,40 +30,38 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-# CREATE TABLE IF NOT EXISTS irrigation_schedule (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   start_time TEXT,      -- HH:MM
-#   duration INTEGER,     -- minutos
-#   enabled INTEGER DEFAULT 1
-# );
+cur.execute("""
+CREATE TABLE IF NOT EXISTS irrigation_schedule (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  start_time TEXT,      -- HH:MM
+  duration INTEGER,     -- minutos
+  enabled INTEGER DEFAULT 1
+)
+""")
 
-# CREATE TABLE IF NOT EXISTS irrigation_log (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   start_time DATETIME,
-#   end_time DATETIME,
-#   duration INTEGER
-# );
+cur.execute("""
+CREATE TABLE IF NOT EXISTS irrigation_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  start_time DATETIME,
+  end_time DATETIME,
+  duration INTEGER
+)
+""")
+cur.execute("""
+CREATE TABLE irrigation_state (
+  id INTEGER PRIMARY KEY,
+  is_on INTEGER
+)
+""")
 
-# CREATE TABLE irrigation_state (
-#   id INTEGER PRIMARY KEY,
-#   is_on INTEGER
-# );
-
-# CREATE TABLE IF NOT EXISTS water_consumption (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   irrigation_id INTEGER,
-#   liters REAL,
-#   cost REAL,
-#   timestamp DATETIME,
-#   FOREIGN KEY (irrigation_id) REFERENCES irrigation_log(id)
-# );
-
-# CREATE TABLE IF NOT EXISTS irrigation_zones (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   name TEXT NOT NULL,
-#   gpio_pin INTEGER NOT NULL,
-#   enabled INTEGER DEFAULT 1
-# );
+cur.execute("""
+CREATE TABLE IF NOT EXISTS irrigation_zones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  gpio_pin INTEGER NOT NULL,
+  enabled INTEGER DEFAULT 1
+)
+""")
 
 # INSERT INTO irrigation_zones (name, gpio_pin) VALUES
 # ('Jardín', 23),
@@ -71,15 +69,16 @@ CREATE TABLE IF NOT EXISTS users (
 # ('Goteo', 25);
 
 # tabla de eventos por zona
-# CREATE TABLE IF NOT EXISTS irrigation_events (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   zone_id INTEGER,
-#   start_time DATETIME,
-#   end_time DATETIME,
-#   duration INTEGER,
-#   FOREIGN KEY(zone_id) REFERENCES irrigation_zones(id)
-# );
-#
+cur.execute("""
+CREATE TABLE IF NOT EXISTS irrigation_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  zone_id INTEGER,
+  start_time DATETIME,
+  end_time DATETIME,
+  duration INTEGER,
+  FOREIGN KEY(zone_id) REFERENCES irrigation_zones(id)
+)
+""")
 # ALTER TABLE irrigation_zones ADD COLUMN is_active INTEGER DEFAULT 0;
 # ALTER TABLE irrigation_zones ADD COLUMN started_at TEXT;
 
