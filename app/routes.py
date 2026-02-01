@@ -79,7 +79,7 @@ def irrigation_status():
     return jsonify([
         {
             "id": r["id"],
-            "is_active": r["is_active"],
+            "is_active": bool["is_active"],
             "started_at": r["started_at"]
         }
         for r in rows
