@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, jsonify, redirect, url_for
 from flask_login import login_required
 
-from app.irrigation import irrigation_bp
+from app.irrigation import irrigation
+from app.irrigation_1 import irrigation_bp
 from app.models import get_db
 
 from flask import request
@@ -68,7 +69,26 @@ def latest():
         "timestamp": row[6]
     })
 
-@irrigation_bp.route("/status")
+#irrigation statu de desarrollo
+# @irrigation_bp.route("/status")
+# def irrigation_status():
+#     db = get_db()
+#     rows = db.execute("""
+#         SELECT id, is_active, started_at
+#         FROM irrigation_zones
+#     """).fetchall()
+#
+#     return jsonify([
+#         {
+#             "id": r["id"],
+#             "is_active": bool["is_active"],
+#             "started_at": r["started_at"]
+#         }
+#         for r in rows
+#     ])
+
+#irrigation status de produccion
+@irrigation.route("/irrigation/status")
 def irrigation_status():
     db = get_db()
     rows = db.execute("""
@@ -79,12 +99,11 @@ def irrigation_status():
     return jsonify([
         {
             "id": r["id"],
-            "is_active": bool["is_active"],
+            "is_active": bool(r["is_active"]),
             "started_at": r["started_at"]
         }
         for r in rows
     ])
-
 
 
 @routes.route("/irrigation")
