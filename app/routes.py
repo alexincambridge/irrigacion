@@ -98,10 +98,31 @@ def irrigation_history():
             duration
         FROM irrigation_events
         ORDER BY start_time DESC
-        LIMIT 50
+        LIMIT 10
     """).fetchall()
 
     return render_template(
         "irrigation_history.html",
         rows=rows
     )
+
+@routes.route("/irrigation/history/data")
+@login_required
+def irrigation_history_data():
+    db = get_db()
+
+    rows = db.execute("""
+        SELECT
+            start_time,
+            duration
+        FROM irrigation_events
+        ORDER BY start_time ASC
+        LIMIT 50
+    """).fetchall()
+
+    return jsonify([
+        {
+            "time": r[0],
+            "duration": r[1]
+        } for r in rows
+    ])

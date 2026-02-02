@@ -4,28 +4,36 @@
 {% block content %}
 <h2>📜 Histórico de riego</h2>
 
-<table>
-  <thead>
-    <tr>
-      <th>Zona</th>
-      <th>Inicio</th>
-      <th>Fin</th>
-      <th>Duración (min)</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for r in rows %}
-    <tr>
-      <td>{{ r[0] }}</td>
-      <td>{{ r[1] }}</td>
-      <td>{{ r[2] or "-" }}</td>
-      <td>{{ r[3] or "-" }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-{% endblock %}
+<div class="card">
+  <h3>Duración de riegos</h3>
+  <div id="irrigationChart"></div>
+</div>
 
+<div class="card">
+  <h3>Últimos 10 riegos</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Zona</th>
+        <th>Inicio</th>
+        <th>Fin</th>
+        <th>Duración (min)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r[0] }}</td>
+        <td>{{ r[1] }}</td>
+        <td>{{ r[2] or "-" }}</td>
+        <td>{{ r[3] or "-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>

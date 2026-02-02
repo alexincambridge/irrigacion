@@ -17,18 +17,18 @@ const chart = new ApexCharts(
 
 chart.render()
 
-async function loadIrrigationHistory(){
+async function loadHistory(){
   const r = await fetch("/irrigation/history/data")
-  const rows = await r.json()
+  const data = await r.json()
 
   chart.updateOptions({
     series: [{
-      data: rows.map(r => r.duration)
+      data: data.map(d => d.duration)
     }],
     xaxis: {
-      categories: rows.map(r => r.time)
+      categories: data.map(d => d.time)
     }
   })
 }
 
-loadIrrigationHistory()
+loadHistory()
