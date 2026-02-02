@@ -72,3 +72,16 @@ def water_data():
         {"time": r[0], "liters": r[1]}
         for r in rows
     ])
+
+
+@routes.route("/irrigation")
+@login_required
+def irrigation_page():
+    db = get_db()
+    zones = db.execute("""
+        SELECT id, name, gpio_pin, enabled
+        FROM irrigation_zones
+    """).fetchall()
+
+    return render_template("irrigation.html", zones=zones)
+
