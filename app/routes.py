@@ -72,4 +72,3 @@ def water_data():
         {"time": r[0], "liters": r[1]}
         for r in rows
     ])
-
