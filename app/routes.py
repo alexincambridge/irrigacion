@@ -37,3 +37,39 @@ def dashboard_data():
         "water_liters": water[0] or 0,
         "water_cost": water[1] or 0
     })
+
+
+@routes.route("/water")
+@login_required
+def water_dashboard():
+    db = get_db()
+    total = db.execute("""
+        SELECT
+          SUM(liters),
+          SUM(cost)
+        FROM water_consumption
+    """).fetchone()
+
+    return render_template(
+        "water.html",
+        liters=total[0] or 0,
+        cost=total[1] or 0
+    )
+
+
+@routes.route("/water/data")
+@login_required
+def water_data():
+    db = get_db()
+    rows = db.execute("""
+        SELECT timestamp, liters
+        FROM water_consumption
+        ORDER BY timestamp ASC
+        LIMIT 50
+    """).fetchall()
+
+    return jsonify([
+        {"time": r[0], "liters": r[1]}
+        for r in rows
+    ])
+
