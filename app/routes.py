@@ -85,15 +85,23 @@ def irrigation_page():
 
     return render_template("irrigation.html", zones=zones)
 
-@routes.route("/irrigation")
+
+@routes.route("/irrigation/history")
 @login_required
-def irrigation_page():
+def irrigation_history():
     db = get_db()
-    zones = db.execute("""
-        SELECT id, name, gpio_pin, enabled
-        FROM irrigation_zones
+    rows = db.execute("""
+        SELECT
+            zone_id,
+            start_time,
+            end_time,
+            duration
+        FROM irrigation_events
+        ORDER BY start_time DESC
+        LIMIT 50
     """).fetchall()
 
-    return render_template("irrigation.html", zones=zones)
-
-
+    return render_template(
+        "irrigation_history.html",
+        rows=rows
+    )
