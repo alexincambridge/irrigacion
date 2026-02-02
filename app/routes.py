@@ -41,7 +41,7 @@ def dashboard_data():
 
 @routes.route("/water")
 @login_required
-def water_dashboard():
+def water_consumption():
     db = get_db()
     total = db.execute("""
         SELECT
