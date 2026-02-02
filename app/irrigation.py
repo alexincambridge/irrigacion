@@ -1,38 +1,47 @@
 from flask import Blueprint, jsonify
+from flask_login import login_required
 from app.db import get_db
-from app.gpio import relay_on, relay_off
-from datetime import datetime
+from app.hardware import zone_on, zone_off, zone_state
 
-irrigation = Blueprint("irrigacion", __name__)
+irrigation = Blueprint("irrigation", __name__)
 
-@irrigation.route("/irrigacion/toggle/<int:zone_id>", methods=["POST"])
-def toggle_zone(zone_id):
+@irrigation.route("/irrigation/status")
+@login_required
+def irrigation_status():
+    db = get_db()
+    zones = db.execute("""
+        SELECT id, started_at, is_active
+        FROM irrigation_zones
+    """).fetchall()
+
+    return jsonify([
+        {
+            "id": z["id"],
+            "is_active": bool(z["is_active"]),
+            "started_at": z["started_at"]
+        }
+        for z in zones
+    ])
+
+@irrigation.route("/irrigation/toggle/<int:zone_id>", methods=["POST"])
+@login_required
+def irrigation_toggle(zone_id):
     db = get_db()
 
-    zone = db.execute(
-        "SELECT gpio_pin, is_active FROM irrigacion_zones WHERE id=?",
-        (zone_id,)
-    ).fetchone()
-
-    if not zone:
-        return jsonify({"error": "Zona no existe"}), 404
-
-    pin, active = zone
-
-    if active:
-        relay_off(pin)
+    if zone_state(zone_id):
+        zone_off(zone_id)
         db.execute("""
-            UPDATE irrigacion_zones
+            UPDATE irrigation_zones
             SET is_active=0, started_at=NULL
             WHERE id=?
         """, (zone_id,))
     else:
-        relay_on(pin)
+        zone_on(zone_id)
         db.execute("""
-            UPDATE irrigacion_zones
-            SET is_active=1, started_at=?
+            UPDATE irrigation_zones
+            SET is_active=1, started_at=datetime('now')
             WHERE id=?
-        """, (datetime.now(), zone_id))
+        """, (zone_id,))
 
     db.commit()
     return jsonify({"ok": True})
