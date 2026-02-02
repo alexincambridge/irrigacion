@@ -4,13 +4,19 @@ from app.auth import auth, init_login_manager
 from app.hardware import irrigation_off
 from app.routes import routes
 from app.gpio import relay_off
-from app.models import get_db
+from app.irrigation import irrigation
+from app.db import close_db
 
 
 def create_app() :
     app = Flask(__name__)
+
     irrigation_off()
     app.secret_key = "dev-secret"
+    app.register_blueprint(irrigation)
+    app.teardown_appcontext(close_db)
+
+
 
     login_manager = LoginManager()
     login_manager.login_view = "auth.login"
