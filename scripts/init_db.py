@@ -81,7 +81,12 @@ CREATE TABLE IF NOT EXISTS irrigation_events (
 """)
 # ALTER TABLE irrigation_zones ADD COLUMN is_active INTEGER DEFAULT 0;
 # ALTER TABLE irrigation_zones ADD COLUMN started_at TEXT;
-
+# CREATE TABLE IF NOT EXISTS dht_readings (
+#   id INTEGER PRIMARY KEY AUTOINCREMENT,
+#   temperature REAL NOT NULL,
+#   humidity REAL NOT NULL,
+#   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+# );
 
 conn.commit()
 conn.close()

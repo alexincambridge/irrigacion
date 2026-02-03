@@ -126,3 +126,43 @@ def irrigation_history_data():
             "duration": r[1]
         } for r in rows
     ])
+
+
+@routes.route("/dashboard/data")
+@login_required
+def dashboard_data():
+    db = get_db()
+
+    sensor = db.execute("""
+        SELECT temperature, humidity, solar, pressure, ec, ph, timestamp
+        FROM sensor_data
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """).fetchone()
+
+    water = db.execute("""
+        SELECT SUM(liters)
+        FROM water_consumption
+    """).fetchone()
+
+    dht = db.execute("""
+        SELECT temperature, humidity
+        FROM dht_readings
+        ORDER BY timestamp DESC
+        LIMIT 1
+    """).fetchone()
+
+    return jsonify({
+        "temperature": sensor[0] if sensor else None,
+        "humidity": sensor[1] if sensor else None,
+        "solar": sensor[2] if sensor else None,
+        "pressure": sensor[3] if sensor else None,
+        "ec": sensor[4] if sensor else None,
+        "ph": sensor[5] if sensor else None,
+        "time": sensor[6] if sensor else None,
+        "water_liters": water[0] or 0,
+
+        # 🔥 NUEVO (DHT11)
+        "dht_temperature": dht[0] if dht else None,
+        "dht_humidity": dht[1] if dht else None
+    })
