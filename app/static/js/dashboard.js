@@ -47,10 +47,10 @@ async function refresh(){
     const d = await r.json()
 
     if(tempGauge && d.dht_temperature != null)
-      tempGauge.updateSeries([d.dht_temperature])
+      tempGauge.updateSeries([Number(d.dht_temperature)])
 
     if(humGauge && d.dht_humidity != null)
-      humGauge.updateSeries([d.dht_humidity])
+      humGauge.updateSeries([Number(d.dht_humidity)])
 
     if(solGauge && d.solar != null)
       solGauge.updateSeries([d.solar])
