@@ -137,3 +137,25 @@ def dashboard_data():
         "dht_temperature": dht[0] if dht else None,
         "dht_humidity": dht[1] if dht else None
     })
+
+@routes.route("/alarms")
+@login_required
+def alarms():
+    db = get_db()
+    rows = db.execute("""
+        SELECT type, level, message, value, created_at
+        FROM alarms
+        ORDER BY created_at DESC
+        LIMIT 20
+    """).fetchall()
+
+    return jsonify([
+        {
+            "type": r[0],
+            "level": r[1],
+            "message": r[2],
+            "value": r[3],
+            "time": r[4]
+        }
+        for r in rows
+    ])

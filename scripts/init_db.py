@@ -87,6 +87,17 @@ CREATE TABLE IF NOT EXISTS irrigation_events (
 #   humidity REAL NOT NULL,
 #   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 # );
+CREATE TABLE IF NOT EXISTS alarms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,              -- temperature, humidity, solar...
+    level TEXT NOT NULL,             -- info, warning, critical
+    message TEXT NOT NULL,
+    value REAL,
+    threshold REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    acknowledged INTEGER DEFAULT 0
+);
+
 
 conn.commit()
 conn.close()
