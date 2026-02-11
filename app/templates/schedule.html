@@ -2,28 +2,77 @@
 {% block title %}Programador{% endblock %}
 
 {% block content %}
-<h2>Programador de riego</h2>
+<h2>🗓 Programador de riego</h2>
 
 <div class="card">
   <form method="post" action="{{ url_for('routes.schedule_add') }}">
-    Hora:
-    <input type="time" name="time" required>
-    Duración (min):
-    <input type="number" name="duration" min="1" required>
+
+    <label>Tipo:</label>
+    <select name="type" id="scheduleType" required>
+      <option value="daily">Diario</option>
+      <option value="weekly">Semanal</option>
+      <option value="monthly">Mensual</option>
+    </select>
+
+    <div id="weeklyOptions" style="display:none;margin-top:10px;">
+      Días:
+      <label><input type="checkbox" name="days" value="1">L</label>
+      <label><input type="checkbox" name="days" value="2">M</label>
+      <label><input type="checkbox" name="days" value="3">X</label>
+      <label><input type="checkbox" name="days" value="4">J</label>
+      <label><input type="checkbox" name="days" value="5">V</label>
+      <label><input type="checkbox" name="days" value="6">S</label>
+      <label><input type="checkbox" name="days" value="0">D</label>
+    </div>
+
+    <div id="monthlyOptions" style="display:none;margin-top:10px;">
+      Día del mes:
+      <input type="number" name="month_day" min="1" max="31">
+    </div>
+
+    <br><br>
+
+    Inicio:
+    <input type="time" name="start_time" required>
+
+    Fin:
+    <input type="time" name="end_time" required>
+
+    <br><br>
     <button>Agregar</button>
   </form>
 </div>
 
 <div class="card">
+  <h3>Programaciones activas</h3>
   <table>
-    <tr><th>Hora</th><th>Duración</th><th>Estado</th></tr>
+    <tr>
+      <th>Tipo</th>
+      <th>Días</th>
+      <th>Inicio</th>
+      <th>Fin</th>
+      <th>Estado</th>
+    </tr>
     {% for r in rows %}
     <tr>
-      <td>{{ r[1] }}</td>
-      <td>{{ r[2] }} min</td>
-      <td>{{ "ON" if r[3] else "OFF" }}</td>
+      <td>{{ r.type }}</td>
+      <td>{{ r.days or r.month_day or "-" }}</td>
+      <td>{{ r.start_time }}</td>
+      <td>{{ r.end_time }}</td>
+      <td>{{ "ON" if r.enabled else "OFF" }}</td>
     </tr>
     {% endfor %}
   </table>
 </div>
+
+<script>
+document.getElementById("scheduleType").addEventListener("change", function(){
+  document.getElementById("weeklyOptions").style.display =
+    this.value === "weekly" ? "block" : "none"
+
+  document.getElementById("monthlyOptions").style.display =
+    this.value === "monthly" ? "block" : "none"
+})
+</script>
+
 {% endblock %}

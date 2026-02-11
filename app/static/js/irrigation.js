@@ -52,6 +52,27 @@ function startTimer(id, startedAt){
   }, 1000)
 }
 
+@routes.route("/irrigation/status")
+@login_required
+def irrigation_status():
+    db = get_db()
+
+    rows = db.execute("""
+        SELECT id, is_active, mode, started_at
+        FROM irrigation_zones
+    """).fetchall()
+
+    return jsonify([
+        {
+            "id": r["id"],
+            "on": bool(r["is_active"]),
+            "mode": r["mode"],
+            "started_at": r["started_at"]
+        }
+        for r in rows
+    ])
+
+
 async function loadStatus(){
   const r = await fetch("/irrigation/status")
   const zones = await r.json()

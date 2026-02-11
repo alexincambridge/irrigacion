@@ -159,3 +159,25 @@ def alarms():
         }
         for r in rows
     ])
+
+
+@routes.route("/program/add", methods=["POST"])
+@login_required
+def add_program():
+    db = get_db()
+
+    zone_id = request.form["zone_id"]
+    mode = request.form["mode"]
+    days = ",".join(request.form.getlist("days"))
+    start_time = request.form["start_time"]
+    end_time = request.form["end_time"]
+
+    db.execute("""
+        INSERT INTO irrigation_programs
+        (zone_id, mode, days, start_time, end_time)
+        VALUES (?, ?, ?, ?, ?)
+    """, (zone_id, mode, days, start_time, end_time))
+
+    db.commit()
+    return redirect(url_for("routes.schedule"))
+

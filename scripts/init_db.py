@@ -46,13 +46,13 @@ CREATE TABLE IF NOT EXISTS irrigation_log (
   end_time DATETIME,
   duration INTEGER
 )
-""")
-cur.execute("""
-CREATE TABLE irrigation_state (
-  id INTEGER PRIMARY KEY,
-  is_on INTEGER
-)
-""")
+# """)
+# cur.execute("""
+# CREATE TABLE irrigation_state (
+#   id INTEGER PRIMARY KEY,
+#   is_on INTEGER
+# )
+# """)
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS irrigation_zones (
@@ -107,6 +107,15 @@ CREATE TABLE IF NOT EXISTS dht_readings (
 )
 """)
 
+# CREATE TABLE irrigation_programs (
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     zone_id INTEGER NOT NULL,
+#     mode TEXT NOT NULL,             -- 'weekly' o 'monthly'
+#     days TEXT NOT NULL,             -- JSON string: "1,3,5" o "15,30"
+#     start_time TEXT NOT NULL,       -- "HH:MM"
+#     end_time TEXT NOT NULL,         -- "HH:MM"
+#     enabled INTEGER DEFAULT 1
+# );
 
 conn.commit()
 conn.close()
