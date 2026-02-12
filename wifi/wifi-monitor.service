@@ -1,0 +1,15 @@
+[Unit]
+Description=Dynamic WiFi Monitor Service
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/wifi_monitor.sh
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+
+sudo systemctl daemon-reload
+sudo systemctl enable wifi-monitor.service
+sudo systemctl start wifi-monitor.service
