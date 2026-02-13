@@ -47,15 +47,26 @@ def water_data():
 
 @routes.route("/irrigation")
 @login_required
-def irrigation_page():
+def irrigation():
     db = get_db()
+
     zones = db.execute("""
         SELECT id, name, gpio_pin, enabled
         FROM irrigation_zones
     """).fetchall()
 
-    return render_template("irrigation.html", zones=zones)
+    schedules = db.execute("""
+        SELECT id, start_time, duration, enabled
+        FROM irrigation_schedule
+        ORDER BY start_time ASC
+        LIMIT 10
+    """).fetchall()
 
+    return render_template(
+        "irrigation.html",
+        zones=zones,
+        schedules=schedules
+    )
 
 @routes.route("/irrigation/history")
 @login_required

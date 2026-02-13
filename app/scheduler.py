@@ -72,6 +72,8 @@ def check_schedule(cur):
 #             time.sleep(duration * 60)
 #             irrigation_off()
 
+
+
 def scheduler_loop():
     global _last_run
 

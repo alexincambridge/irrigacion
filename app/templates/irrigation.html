@@ -3,6 +3,29 @@
 
 {% block content %}
 <h2>💧 Zonas de riego</h2>
+<div class="card">
+  <h3>Riegos programados</h3>
+
+  {% if schedules %}
+  <table>
+    <tr>
+      <th>Hora</th>
+      <th>Duración</th>
+      <th>Estado</th>
+    </tr>
+
+    {% for s in schedules %}
+    <tr>
+      <td>{{ s[1] }}</td>
+      <td>{{ s[2] }} min</td>
+      <td>{{ "ON" if s[3] else "OFF" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p>No hay riegos programados.</p>
+  {% endif %}
+</div>
 
 <div class="zones-grid">
   {% for z in zones %}
