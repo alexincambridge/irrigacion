@@ -25,15 +25,15 @@ async function createSchedule(){
   })
 })
 
-  if(!r.ok){
+if(!r.ok){
   const text = await r.text()
-  console.error("Server error:", text)
+  console.error("SERVER ERROR:", text)
   alert("Error servidor, mira consola")
   return
 }
 
+const data = await r.json()
 
-  const data = await r.json()
 
   if(data.error){
     alert(data.error)
