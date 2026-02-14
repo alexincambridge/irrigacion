@@ -125,6 +125,15 @@ CREATE TABLE IF NOT EXISTS dht_readings (
 #     type TEXT NOT NULL CHECK(type IN ('manual','programado'))
 # );
 
+# cur.execute("""
+#     INSERT INTO irrigation_log (sector, start_time)
+#     VALUES (?, ?)
+# """, (sector, now))
+#
+# log_id = cur.lastrowid
+# conn.commit()
+
+
 conn.commit()
 conn.close()
 

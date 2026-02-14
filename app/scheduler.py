@@ -1,10 +1,19 @@
+import sqlite3
+import time
+from datetime import datetime, timedelta
+
+from app.hardware import zone_on, zone_off, irrigation_off
+
+
 def scheduler_loop():
     global _last_run
 
     irrigation_off()  # seguridad al arrancar
 
     active_irrigation = None
+    active_log_id = None
     irrigation_end_time = None
+    active_sector = None
 
     while True:
         try:
@@ -14,7 +23,7 @@ def scheduler_loop():
             now = datetime.now()
             now_hm = now.strftime("%H:%M")
 
-            # 1️⃣ Si NO hay riego activo, buscar uno nuevo
+            # 1️⃣ Buscar nuevo riego
             if active_irrigation is None:
 
                 row = cur.execute("""
@@ -28,39 +37,41 @@ def scheduler_loop():
                     schedule_id, sector, duration = row
                     _last_run = now_hm
 
-                    irrigation_on()  # aquí luego irá zone_on(sector)
+                    zone_on(sector)
 
                     irrigation_end_time = now + timedelta(minutes=duration)
                     active_irrigation = schedule_id
+                    active_sector = sector
 
                     cur.execute("""
                         INSERT INTO irrigation_log (sector, start_time)
                         VALUES (?, ?)
                     """, (sector, now))
 
+                    active_log_id = cur.lastrowid
                     conn.commit()
 
-            # 2️⃣ Si hay riego activo comprobar si debe finalizar
+            # 2️⃣ Finalizar riego
             if active_irrigation and now >= irrigation_end_time:
 
-                irrigation_off()
+                zone_off(active_sector)
 
                 cur.execute("""
                     UPDATE irrigation_log
                     SET end_time = ?
-                    WHERE id = (
-                        SELECT id FROM irrigation_log
-                        ORDER BY id DESC LIMIT 1
-                    )
-                """, (now,))
+                    WHERE id = ?
+                """, (now, active_log_id))
+
                 conn.commit()
 
                 active_irrigation = None
+                active_log_id = None
                 irrigation_end_time = None
+                active_sector = None
 
             conn.close()
 
         except Exception as e:
             print("Scheduler error:", e)
 
-        time.sleep(10)  # revisa cada 10 segundos
+        time.sleep(10)
