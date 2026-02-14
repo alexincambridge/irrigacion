@@ -3,7 +3,12 @@ import time
 from datetime import datetime, timedelta
 
 from app.hardware import zone_on, zone_off, irrigation_off
+import os
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "instance", "irrigation.db")
+
+conn = sqlite3.connect(DB_PATH, timeout=10)
 
 def scheduler_loop():
     global _last_run
