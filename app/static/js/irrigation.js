@@ -7,66 +7,16 @@ function formatTime(seconds){
   return `${m}:${s}`
 }
 
-document.addEventListener("DOMContentLoaded", function(){
-
-  const calendarEl = document.getElementById("calendar")
-
-  if(!calendarEl) return
-
-  const calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    selectable: true,
-
-    dateClick: function(info){
-      selectedDate = info.dateStr
-      alert("Fecha seleccionada: " + selectedDate)
-    },
-
-    events: async function(fetchInfo, successCallback){
-      const r = await fetch("/irrigation/schedule/list")
-      const data = await r.json()
-
-      const events = data.map(s => ({
-  title: "Sector " + s.sector,
-  start: s.date + "T" + s.start,
-  end: s.date + "T" + s.end,
-  color: s.sector == 1 ? "#2ecc71" :
-         s.sector == 2 ? "#3498db" :
-                         "#e67e22"
-}))
-
-
-      successCallback(events)
-    }
-  })
-
-  calendar.render()
-
-  window._calendar = calendar
-})
-
-let selectedDate = null
-
 async function createSchedule(){
-
-  if(!selectedDate){
-    alert("Selecciona una fecha en el calendario")
-    return
-  }
-
   const sector = document.getElementById("sector").value
+  const date   = document.getElementById("date").value
   const start  = document.getElementById("start").value
   const end    = document.getElementById("end").value
 
   const r = await fetch("/irrigation/schedule/add",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({
-      sector: sector,
-      date: selectedDate,
-      start: start,
-      end: end
-    })
+    body: JSON.stringify({ sector, date, start, end })
   })
 
   const data = await r.json()
@@ -76,9 +26,8 @@ async function createSchedule(){
     return
   }
 
-  window._calendar.refetchEvents()
+  loadSchedules()
 }
-
 
 //recargar tabla sin refrescar
 async function loadSchedules(){

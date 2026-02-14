@@ -3,22 +3,23 @@
 
 {% block content %}
 
+<h2>💧 Zonas de riego</h2>
 
+<!-- RIEGOS PROGRAMADOS -->
 <div class="card">
-  <h3>📅 Calendario de riegos</h3>
-  <div id="calendar"></div>
-</div>
-
-  <div class="card">
-  <h3>Nuevo riego</h3>
+  <h3>Nuevo riego programado</h3>
 
   <div class="form-grid">
+
     <label>Sector</label>
     <select id="sector">
       <option value="1">Sector 1</option>
       <option value="2">Sector 2</option>
       <option value="3">Sector 3</option>
     </select>
+
+    <label>Fecha</label>
+    <input type="date" id="date">
 
     <label>Hora inicio</label>
     <input type="time" id="start">
@@ -27,9 +28,9 @@
     <input type="time" id="end">
 
     <button onclick="createSchedule()">Guardar</button>
+
   </div>
 </div>
-
 
 
 <!-- ZONAS MANUALES -->
@@ -93,6 +94,4 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/irrigation.js') }}"></script>
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 {% endblock %}
