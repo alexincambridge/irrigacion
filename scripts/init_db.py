@@ -117,6 +117,14 @@ CREATE TABLE IF NOT EXISTS dht_readings (
 #     enabled INTEGER DEFAULT 1
 # );
 
+# CREATE TABLE irrigation_records (
+#     id INTEGER PRIMARY KEY AUTOINCREMENT,
+#     sector INTEGER NOT NULL,
+#     start_datetime TEXT NOT NULL,
+#     end_datetime TEXT NOT NULL,
+#     type TEXT NOT NULL CHECK(type IN ('manual','programado'))
+# );
+
 conn.commit()
 conn.close()
 

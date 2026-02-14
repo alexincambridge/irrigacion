@@ -2,7 +2,10 @@
 {% block title %}Riego{% endblock %}
 
 {% block content %}
+
 <h2>💧 Zonas de riego</h2>
+
+<!-- RIEGOS PROGRAMADOS -->
 <div class="card">
   <h3>Riegos programados</h3>
 
@@ -27,6 +30,8 @@
   {% endif %}
 </div>
 
+
+<!-- ZONAS MANUALES -->
 <div class="zones-grid">
   {% for z in zones %}
   <div class="zone-card" id="zone-{{ z[0] }}">
@@ -48,6 +53,41 @@
   </div>
   {% endfor %}
 </div>
+
+
+<!-- HISTÓRICO -->
+<div class="card">
+  <h3>Últimos riegos</h3>
+
+  {% if records %}
+  <table>
+    <tr>
+      <th>Sector</th>
+      <th>Inicio</th>
+      <th>Fin</th>
+      <th>Tipo</th>
+    </tr>
+
+    {% for r in records %}
+    <tr>
+      <td>{{ r[0] }}</td>
+      <td>{{ r[1] }}</td>
+      <td>{{ r[2] }}</td>
+      <td>
+        {% if r[3] == "manual" %}
+          🔵 Manual
+        {% else %}
+          🟢 Programado
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p>No hay registros todavía.</p>
+  {% endif %}
+</div>
+
 {% endblock %}
 
 {% block scripts %}

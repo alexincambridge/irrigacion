@@ -31,16 +31,17 @@ def irrigation_toggle(zone_id):
     if zone_state(zone_id):
         zone_off(zone_id)
         db.execute("""
-            UPDATE irrigation_zones
-            SET is_active=0, started_at=NULL
-            WHERE id=?
+            INSERT INTO irrigation_records (sector, start_datetime, end_datetime, type)
+            VALUES (?, datetime('now'), '', 'manual')
         """, (zone_id,))
     else:
         zone_on(zone_id)
         db.execute("""
-            UPDATE irrigation_zones
-            SET is_active=1, started_at=datetime('now')
-            WHERE id=?
+            UPDATE irrigation_records
+            SET end_datetime = datetime('now')
+            WHERE sector = ?
+              AND type = 'manual'
+              AND end_datetime = ''
         """, (zone_id,))
 
     db.commit()
