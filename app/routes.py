@@ -62,11 +62,20 @@ def irrigation():
         LIMIT 10
     """).fetchall()
 
+    records = db.execute("""
+        SELECT sector, start_datetime, end_datetime, type
+        FROM irrigation_records
+        ORDER BY start_datetime DESC
+        LIMIT 10
+    """).fetchall()
+
     return render_template(
         "irrigation.html",
         zones=zones,
-        schedules=schedules
+        schedules=schedules,
+        records=records
     )
+
 
 @routes.route("/irrigation/history")
 @login_required
