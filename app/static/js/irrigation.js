@@ -7,6 +7,49 @@ function formatTime(seconds){
   return `${m}:${s}`
 }
 
+async function createSchedule(){
+  const sector = document.getElementById("sector").value
+  const date   = document.getElementById("date").value
+  const start  = document.getElementById("start").value
+  const end    = document.getElementById("end").value
+
+  const r = await fetch("/irrigation/schedule/add",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ sector, date, start, end })
+  })
+
+  const data = await r.json()
+
+  if(data.error){
+    alert(data.error)
+    return
+  }
+
+  loadSchedules()
+}
+
+//recargar tabla sin refrescar
+async function loadSchedules(){
+  const r = await fetch("/irrigation/schedule/list")
+  const rows = await r.json()
+
+  const table = document.querySelector("#scheduleTable tbody")
+  table.innerHTML = ""
+
+  rows.forEach(s=>{
+    table.innerHTML += `
+      <tr>
+        <td>${s.sector}</td>
+        <td>${s.date}</td>
+        <td>${s.start}</td>
+        <td>${s.end}</td>
+        <td>${s.duration} min</td>
+      </tr>
+    `
+  })
+}
+
 async function toggleZone(id){
   try{
     const r = await fetch(`/irrigation/toggle/${id}`, { method:"POST" })

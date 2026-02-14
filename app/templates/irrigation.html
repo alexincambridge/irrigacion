@@ -7,27 +7,29 @@
 
 <!-- RIEGOS PROGRAMADOS -->
 <div class="card">
-  <h3>Riegos programados</h3>
+  <h3>Nuevo riego programado</h3>
 
-  {% if schedules %}
-  <table>
-    <tr>
-      <th>Hora</th>
-      <th>Duración</th>
-      <th>Estado</th>
-    </tr>
+  <div class="form-grid">
 
-    {% for s in schedules %}
-    <tr>
-      <td>{{ s[1] }}</td>
-      <td>{{ s[2] }} min</td>
-      <td>{{ "ON" if s[3] else "OFF" }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-    <p>No hay riegos programados.</p>
-  {% endif %}
+    <label>Sector</label>
+    <select id="sector">
+      <option value="1">Sector 1</option>
+      <option value="2">Sector 2</option>
+      <option value="3">Sector 3</option>
+    </select>
+
+    <label>Fecha</label>
+    <input type="date" id="date">
+
+    <label>Hora inicio</label>
+    <input type="time" id="start">
+
+    <label>Hora fin</label>
+    <input type="time" id="end">
+
+    <button onclick="createSchedule()">Guardar</button>
+
+  </div>
 </div>
 
 
