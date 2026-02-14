@@ -14,26 +14,20 @@ async function createSchedule(){
   const end    = document.getElementById("end").value
 
   const r = await fetch("/irrigation/schedule/add",{
-  method:"POST",
-  credentials:"same-origin",
-  headers:{ "Content-Type":"application/json" },
-  body: JSON.stringify({
-    sector,
-    date: selectedDate,
-    start,
-    end
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ sector, date, start, end })
   })
-})
 
-if(!r.ok){
+  if(!r.ok){
   const text = await r.text()
-  console.error("SERVER ERROR:", text)
+  console.error("Server error:", text)
   alert("Error servidor, mira consola")
   return
 }
 
-const data = await r.json()
 
+  const data = await r.json()
 
   if(data.error){
     alert(data.error)
