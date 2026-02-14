@@ -1,9 +1,10 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from app.db import get_db
 from app.hardware import zone_on, zone_off, zone_state
 
 irrigation = Blueprint("irrigation", __name__)
+
 
 @irrigation.route("/irrigation/status")
 @login_required

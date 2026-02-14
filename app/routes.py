@@ -204,48 +204,15 @@ def add_program():
 @routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
 def schedule_add_ajax():
-    data = request.get_json()
-    db = get_db()
+    try:
+        data = request.get_json()
+        print("DATA RECIBIDA:", data)
 
-    sector = int(data["sector"])
-    date = data["date"]
-    start = data["start"]
-    end = data["end"]
+        return jsonify({"ok": True})
 
-    start_dt = datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
-    end_dt   = datetime.strptime(f"{date} {end}", "%Y-%m-%d %H:%M")
-
-    duration = int((end_dt - start_dt).total_seconds() / 60)
-
-    if duration <= 0:
-        return jsonify({"error": "Hora fin inválida"})
-
-    if duration > 60:
-        return jsonify({"error": "Máximo 60 minutos"})
-
-    if duration not in [15,30,45,60]:
-        return jsonify({"error": "Solo 15, 30, 45 o 60 minutos"})
-
-    # máximo 3 riegos por sector por día
-    count = db.execute("""
-        SELECT COUNT(*)
-        FROM irrigation_schedule
-        WHERE sector = ?
-          AND date = ?
-    """,(sector,date)).fetchone()[0]
-
-    if count >= 3:
-        return jsonify({"error":"Máximo 3 riegos por sector y día"})
-
-    db.execute("""
-        INSERT INTO irrigation_schedule
-        (sector, date, start_time, end_time, duration)
-        VALUES (?, ?, ?, ?, ?)
-    """,(sector,date,start,end,duration))
-
-    db.commit()
-
-    return jsonify({"success": True})
+    except Exception as e:
+        print("ERROR EN ROUTE:", e)
+        return jsonify({"error": str(e)}), 500
 
 # lista programadores
 
