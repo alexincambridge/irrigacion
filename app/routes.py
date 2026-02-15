@@ -5,6 +5,12 @@ from datetime import datetime
 
 routes = Blueprint("routes", __name__)
 
+@routes.route("/debug/db")
+def debug_db():
+    import os
+    return os.path.abspath("instance/irrigacion.db")
+
+
 @routes.route("/dashboard")
 @login_required
 def dashboard():
