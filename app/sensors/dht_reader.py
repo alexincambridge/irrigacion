@@ -7,7 +7,7 @@ import board
 import adafruit_dht
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parents[2] / "instance" / "irrigacion.db"
+DB_PATH = Path(__file__).resolve().parents[2] / "instance" / "irrigation.db"
 
 dht = adafruit_dht.DHT11(board.D22)
 

@@ -8,7 +8,7 @@ import board
 import adafruit_dht
 from datetime import datetime
 
-DB_PATH = "/home/alexdev/Documents/irrigacion/instance/irrigacion.db"
+DB_PATH = "/home/alexdev/Documents/irrigacion/instance/irrigation.db"
 DHT_PIN = board.D22
 INTERVAL = 5  # segundos
 

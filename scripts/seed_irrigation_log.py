@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "instance/irrigacion.db"
+DB_PATH = BASE_DIR / "instance/irrigation.db"
 
 def seed_irrigation_log(n=20):
     conn = sqlite3.connect(DB_PATH)

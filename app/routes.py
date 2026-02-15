@@ -8,7 +8,7 @@ routes = Blueprint("routes", __name__)
 @routes.route("/debug/db")
 def debug_db():
     import os
-    return os.path.abspath("instance/irrigacion.db")
+    return os.path.abspath("instance/irrigation.db")
 
 
 @routes.route("/dashboard")
