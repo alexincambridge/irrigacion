@@ -2,7 +2,7 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 
-from app.hardware import zone_on, zone_off, irrigation_off, irrigation_on
+from app.hardware import zone_on, zone_off, irrigation_off
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
