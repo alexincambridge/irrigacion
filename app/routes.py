@@ -84,8 +84,19 @@ def alarms():
 @login_required
 def irrigation():
     db = get_db()
-    zones = db.execute("SELECT id, name, gpio_pin, enabled FROM irrigation_zones").fetchall()
-    return render_template("irrigation.html", zones=zones)
+    zones = db.execute("""
+        SELECT id, name, gpio_pin, enabled
+        FROM irrigation_zones
+    """).fetchall()
+
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+
+    return render_template(
+        "irrigation.html",
+        zones=zones,
+        today=today
+    )
+
 
 # Crear riego programado
 @routes.route("/irrigation/schedule", methods=["POST"])
