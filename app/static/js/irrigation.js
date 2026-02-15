@@ -8,16 +8,25 @@ function formatTime(seconds){
   return `${m}:${s}`
 }
 
-// ---------- TOGGLE ----------
+// ---------- ZONAS / RIEGO MANUAL ----------
 async function toggleZone(id){
-  const r = await fetch(`/irrigation/toggle/${id}`, { method:"POST" })
+  // Alterna manualmente: start / stop
+  const action = document.getElementById(`zone-${id}`).classList.contains("active") ? "stop" : "start"
+
+  const r = await fetch("/irrigation/manual", {
+    method:"POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sector: id, action })
+  })
   if(!r.ok) return
+  const data = await r.json()
+  if(!data.success) return
 
   const card = document.getElementById(`zone-${id}`)
   const status = card.querySelector(".zone-status")
   const timerEl = document.getElementById(`timer-${id}`)
 
-  if(card.classList.contains("active")){
+  if(action === "stop"){
     // APAGAR
     card.classList.remove("active")
     status.textContent = "APAGADO"
@@ -28,12 +37,14 @@ async function toggleZone(id){
     card.classList.add("active")
     status.textContent = "RIEGO ACTIVO"
     timers[id] = Date.now()
-
     intervals[id] = setInterval(()=>{
       const elapsed = Math.floor((Date.now() - timers[id]) / 1000)
       timerEl.textContent = formatTime(elapsed)
     }, 1000)
   }
+
+  // Refresca historial
+  loadLog()
 }
 
 // ---------- RESTORE STATE ----------
@@ -55,7 +66,6 @@ function startTimer(id, startedAt){
 async function loadStatus(){
   const r = await fetch("/irrigation/status")
   const zones = await r.json()
-
   zones.forEach(z=>{
     if(z.is_active && z.started_at){
       startTimer(z.id, z.started_at)
@@ -63,8 +73,85 @@ async function loadStatus(){
   })
 }
 
-loadStatus()
+// ---------- RIEGO PROGRAMADO ----------
+async function loadSchedules(){
+  const res = await fetch("/irrigation/schedule")
+  const schedules = await res.json()
+  const tbody = document.querySelector("#scheduleTable tbody")
+  tbody.innerHTML = ""
+  const noSchedules = document.getElementById("noSchedules")
+  if(schedules.length === 0){
+    noSchedules.textContent = "No hay riegos programados pendientes."
+    return
+  }
+  noSchedules.textContent = ""
+  schedules.forEach(s=>{
+    const tr = document.createElement("tr")
+    tr.innerHTML = `
+      <td>${s.sector}</td>
+      <td>${s.date}</td>
+      <td>${s.start_time}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="cancelSchedule(${s.id})">Cancelar</button></td>
+    `
+    tbody.appendChild(tr)
+  })
+}
 
+async function cancelSchedule(id){
+  const res = await fetch(`/irrigation/schedule/${id}`, { method:"DELETE" })
+  const data = await res.json()
+  if(data.success) loadSchedules()
+}
+
+// Formulario de riego programado
+document.getElementById("scheduleForm")?.addEventListener("submit", async (e)=>{
+  e.preventDefault()
+  const sector = document.getElementById("sector").value
+  const date = document.getElementById("date").value
+  const time = document.getElementById("time").value
+  const res = await fetch("/irrigation/schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sector, date, time })
+  })
+  const data = await res.json()
+  if(data.success){
+    e.target.reset()
+    loadSchedules()
+  }else{
+    alert("Error al guardar riego.")
+  }
+})
+
+// ---------- HISTORIAL ----------
+async function loadLog(){
+  const res = await fetch("/irrigation/log")
+  const logs = await res.json()
+  const tbody = document.querySelector("#logTable tbody")
+  tbody.innerHTML = ""
+  const noLog = document.getElementById("noLog")
+  if(logs.length === 0){
+    noLog.textContent = "No hay historial de riegos."
+    return
+  }
+  noLog.textContent = ""
+  logs.forEach(l=>{
+    const tr = document.createElement("tr")
+    tr.innerHTML = `
+      <td>${l.sector}</td>
+      <td>${l.start_time}</td>
+      <td>${l.end_time || "-"}</td>
+      <td>${l.type.charAt(0).toUpperCase() + l.type.slice(1)}</td>
+    `
+    tbody.appendChild(tr)
+  })
+}
+
+// ---------- INICIAL ----------
+loadStatus()
+loadSchedules()
+loadLog()
 
 // ---------- EXPORT ----------
 window.toggleZone = toggleZone
+window.cancelSchedule = cancelSchedule

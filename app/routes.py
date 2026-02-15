@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, redirect, url_for, request
 from flask_login import login_required
 from app.db import get_db
+from datetime import datetime
 
 routes = Blueprint("routes", __name__)
 
@@ -9,24 +10,19 @@ routes = Blueprint("routes", __name__)
 def dashboard():
     return render_template("dashboard.html")
 
-
 @routes.route("/water")
 @login_required
 def water_consumption():
     db = get_db()
     total = db.execute("""
-        SELECT
-          SUM(liters),
-          SUM(cost)
+        SELECT SUM(liters), SUM(cost)
         FROM water_consumption
     """).fetchone()
-
     return render_template(
         "water.html",
         liters=total[0] or 0,
         cost=total[1] or 0
     )
-
 
 @routes.route("/water/data")
 @login_required
@@ -38,102 +34,153 @@ def water_data():
         ORDER BY timestamp ASC
         LIMIT 50
     """).fetchall()
+    return jsonify([{"time": r[0], "liters": r[1]} for r in rows])
 
-    return jsonify([
-        {"time": r[0], "liters": r[1]}
-        for r in rows
-    ])
-
+# ---------------------------------------------
+# RIEGO - NUEVO REDISEÑO
+# ---------------------------------------------
 
 @routes.route("/irrigation")
 @login_required
 def irrigation():
     db = get_db()
-
     zones = db.execute("""
         SELECT id, name, gpio_pin, enabled
         FROM irrigation_zones
     """).fetchall()
+    # La página usará AJAX para programados y log
+    return render_template("irrigation.html", zones=zones)
 
-    schedules = db.execute("""
-        SELECT id, start_time, duration, enabled
+# Crear riego programado
+@routes.route("/irrigation/schedule", methods=["POST"])
+@login_required
+def add_schedule():
+    data = request.json
+    sector = data.get("sector")
+    date = data.get("date")
+    start_time = data.get("time")
+
+    if not all([sector, date, start_time]):
+        return jsonify({"success": False, "message": "Datos incompletos"}), 400
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
+        VALUES (?, ?, ?, 1)
+    """, (sector, date, start_time))
+    db.commit()
+    return jsonify({"success": True})
+
+# Obtener riegos programados pendientes (max 10)
+@routes.route("/irrigation/schedule", methods=["GET"])
+@login_required
+def get_schedules():
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, date, start_time
         FROM irrigation_schedule
-        ORDER BY start_time ASC
+        WHERE enabled=1 AND (date || ' ' || start_time) > ?
+        ORDER BY date ASC, start_time ASC
+        LIMIT 10
+    """, (now_str,)).fetchall()
+    schedules = [dict(r) for r in rows]
+    return jsonify(schedules)
+
+# Cancelar riego programado
+@routes.route("/irrigation/schedule/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def delete_schedule(schedule_id):
+    db = get_db()
+    db.execute("DELETE FROM irrigation_schedule WHERE id=?", (schedule_id,))
+    db.commit()
+    return jsonify({"success": True})
+
+# Activar / desactivar riego manual
+@routes.route("/irrigation/manual", methods=["POST"])
+@login_required
+def manual_irrigate():
+    data = request.json
+    sector = data.get("sector")
+    action = data.get("action")  # "start" o "stop"
+
+    if not sector or action not in ["start", "stop"]:
+        return jsonify({"success": False}), 400
+
+    db = get_db()
+    if action == "start":
+        db.execute("""
+            INSERT INTO irrigation_log (sector, start_time, type)
+            VALUES (?, CURRENT_TIMESTAMP, 'manual')
+        """, (sector,))
+    else:
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time=CURRENT_TIMESTAMP
+            WHERE sector=? AND type='manual' AND end_time IS NULL
+        """, (sector,))
+    db.commit()
+    return jsonify({"success": True})
+
+# Obtener historial de riegos (últimos 10)
+@routes.route("/irrigation/log", methods=["GET"])
+@login_required
+def get_irrigation_log():
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
         LIMIT 10
     """).fetchall()
+    log = [dict(r) for r in rows]
+    return jsonify(log)
 
-    return render_template(
-        "irrigation.html",
-        zones=zones,
-        schedules=schedules
-    )
+# ---------------------------------------------
+# RESTO DE RUTAS EXISTENTES
+# ---------------------------------------------
 
 @routes.route("/irrigation/history")
 @login_required
 def irrigation_history():
     db = get_db()
     rows = db.execute("""
-        SELECT
-            zone_id,
-            start_time,
-            end_time,
-            duration
+        SELECT zone_id, start_time, end_time, duration
         FROM irrigation_events
         ORDER BY start_time DESC
         LIMIT 10
     """).fetchall()
-
-    return render_template(
-        "irrigation_history.html",
-        rows=rows
-    )
+    return render_template("irrigation_history.html", rows=rows)
 
 @routes.route("/irrigation/history/data")
 @login_required
 def irrigation_history_data():
     db = get_db()
-
     rows = db.execute("""
-        SELECT
-            start_time,
-            duration
+        SELECT start_time, duration
         FROM irrigation_events
         ORDER BY start_time ASC
         LIMIT 50
     """).fetchall()
-
-    return jsonify([
-        {
-            "time": r[0],
-            "duration": r[1]
-        } for r in rows
-    ])
-
+    return jsonify([{"time": r[0], "duration": r[1]} for r in rows])
 
 @routes.route("/dashboard/data")
 @login_required
 def dashboard_data():
     db = get_db()
-
     sensor = db.execute("""
         SELECT temperature, humidity, solar, pressure, ec, ph, timestamp
         FROM sensor_data
         ORDER BY timestamp DESC
         LIMIT 1
     """).fetchone()
-
-    water = db.execute("""
-        SELECT SUM(liters)
-        FROM water_consumption
-    """).fetchone()
-
+    water = db.execute("SELECT SUM(liters) FROM water_consumption").fetchone()
     dht = db.execute("""
         SELECT temperature, humidity
         FROM dht_readings
         ORDER BY timestamp DESC
         LIMIT 1
     """).fetchone()
-
     return jsonify({
         "temperature": sensor[0] if sensor else None,
         "humidity": sensor[1] if sensor else None,
@@ -143,8 +190,6 @@ def dashboard_data():
         "ph": sensor[5] if sensor else None,
         "time": sensor[6] if sensor else None,
         "water_liters": water[0] or 0,
-
-        # 🔥 NUEVO (DHT11)
         "dht_temperature": dht[0] if dht else None,
         "dht_humidity": dht[1] if dht else None
     })
@@ -159,36 +204,21 @@ def alarms():
         ORDER BY created_at DESC
         LIMIT 20
     """).fetchall()
-
-    return jsonify([
-        {
-            "type": r[0],
-            "level": r[1],
-            "message": r[2],
-            "value": r[3],
-            "time": r[4]
-        }
-        for r in rows
-    ])
-
+    return jsonify([{"type": r[0], "level": r[1], "message": r[2], "value": r[3], "time": r[4]} for r in rows])
 
 @routes.route("/program/add", methods=["POST"])
 @login_required
 def add_program():
     db = get_db()
-
     zone_id = request.form["zone_id"]
     mode = request.form["mode"]
     days = ",".join(request.form.getlist("days"))
     start_time = request.form["start_time"]
     end_time = request.form["end_time"]
-
     db.execute("""
         INSERT INTO irrigation_programs
         (zone_id, mode, days, start_time, end_time)
         VALUES (?, ?, ?, ?, ?)
     """, (zone_id, mode, days, start_time, end_time))
-
     db.commit()
     return redirect(url_for("routes.schedule"))
-
