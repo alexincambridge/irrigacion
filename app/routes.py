@@ -188,71 +188,71 @@ def alarms():
     ])
 
 
-@routes.route("/program/add", methods=["POST"])
-@login_required
-def add_program():
-    db = get_db()
-
-    zone_id = request.form["zone_id"]
-    mode = request.form["mode"]
-    days = ",".join(request.form.getlist("days"))
-    start_time = request.form["start_time"]
-    end_time = request.form["end_time"]
-
-    db.execute("""
-        INSERT INTO irrigation_programs
-        (zone_id, mode, days, start_time, end_time)
-        VALUES (?, ?, ?, ?, ?)
-    """, (zone_id, mode, days, start_time, end_time))
-
-    db.commit()
-    return redirect(url_for("routes.schedule"))
-
 @routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
-def schedule_add_ajax():
+def schedule_add():
     data = request.get_json()
-    db = get_db()
 
     sector = int(data["sector"])
-    date = data["date"]
-    start = data["start"]
-    end = data["end"]
+    start_time = data["start_time"]  # formato HH:MM
 
-    start_dt = datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
-    end_dt   = datetime.strptime(f"{date} {end}", "%Y-%m-%d %H:%M")
-
-    duration = int((end_dt - start_dt).total_seconds() / 60)
-
-    if duration <= 0:
-        return jsonify({"error": "Hora fin inválida"})
-
-    if duration > 60:
-        return jsonify({"error": "Máximo 60 minutos"})
-
-    if duration not in [15,30,45,60]:
-        return jsonify({"error": "Solo 15, 30, 45 o 60 minutos"})
-
-    # máximo 3 riegos por sector por día
-    count = db.execute("""
-        SELECT COUNT(*)
-        FROM irrigation_schedule
-        WHERE sector = ?
-          AND date = ?
-    """,(sector,date)).fetchone()[0]
-
-    if count >= 3:
-        return jsonify({"error":"Máximo 3 riegos por sector y día"})
+    db = get_db()
 
     db.execute("""
-        INSERT INTO irrigation_schedule
-        (sector, date, start_time, end_time, duration)
-        VALUES (?, ?, ?, ?, ?)
-    """,(sector,date,start,end,duration))
+        INSERT INTO irrigation_schedule (sector, start_time, enabled)
+        VALUES (?, ?, 1)
+    """, (sector, start_time))
 
     db.commit()
 
     return jsonify({"success": True})
+
+
+# @routes.route("/irrigation/schedule/add", methods=["POST"])
+# @login_required
+# def schedule_add_ajax():
+#     data = request.get_json()
+#     db = get_db()
+#
+#     sector = int(data["sector"])
+#     date = data["date"]
+#     start = data["start"]
+#     end = data["end"]
+#
+#     start_dt = datetime.strptime(f"{date} {start}", "%Y-%m-%d %H:%M")
+#     end_dt   = datetime.strptime(f"{date} {end}", "%Y-%m-%d %H:%M")
+#
+#     duration = int((end_dt - start_dt).total_seconds() / 60)
+#
+#     if duration <= 0:
+#         return jsonify({"error": "Hora fin inválida"})
+#
+#     if duration > 60:
+#         return jsonify({"error": "Máximo 60 minutos"})
+#
+#     if duration not in [15,30,45,60]:
+#         return jsonify({"error": "Solo 15, 30, 45 o 60 minutos"})
+#
+#     # máximo 3 riegos por sector por día
+#     count = db.execute("""
+#         SELECT COUNT(*)
+#         FROM irrigation_schedule
+#         WHERE sector = ?
+#           AND date = ?
+#     """,(sector,date)).fetchone()[0]
+#
+#     if count >= 3:
+#         return jsonify({"error":"Máximo 3 riegos por sector y día"})
+#
+#     db.execute("""
+#         INSERT INTO irrigation_schedule
+#         (sector, date, start_time, end_time, duration)
+#         VALUES (?, ?, ?, ?, ?)
+#     """,(sector,date,start,end,duration))
+#
+#     db.commit()
+#
+#     return jsonify({"success": True})
 
 # @routes.route("/irrigation/schedule/add", methods=["POST"])
 # @login_required
@@ -291,3 +291,40 @@ def schedule_list():
         }
         for r in rows
     ])
+
+def scheduler_loop():
+
+    irrigation_off()  # seguridad al arrancar
+
+    last_trigger = None
+
+    while True:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+
+            now = datetime.now().strftime("%H:%M")
+
+            row = cur.execute("""
+                SELECT sector
+                FROM irrigation_schedule
+                WHERE start_time = ?
+                  AND enabled = 1
+            """, (now,)).fetchone()
+
+            if row and last_trigger != now:
+                sector = row[0]
+
+                print(f"Activando sector {sector}")
+
+                # aquí luego puedes hacer zone_on(sector)
+                irrigation_on()
+
+                last_trigger = now
+
+            conn.close()
+
+        except Exception as e:
+            print("Scheduler error:", e)
+
+        time.sleep(30)

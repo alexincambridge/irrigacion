@@ -8,34 +8,28 @@ function formatTime(seconds){
 }
 
 async function createSchedule(){
+
   const sector = document.getElementById("sector").value
-  const date   = document.getElementById("date").value
-  const start  = document.getElementById("start").value
-  const end    = document.getElementById("end").value
+  const start_time = document.getElementById("start").value
 
   const r = await fetch("/irrigation/schedule/add",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ sector, date, start, end })
+    credentials:"same-origin",
+    body: JSON.stringify({
+      sector,
+      start_time
+    })
   })
 
   if(!r.ok){
-  const text = await r.text()
-  console.error("Server error:", text)
-  alert("Error servidor, mira consola")
-  return
-}
-
-
-  const data = await r.json()
-
-  if(data.error){
-    alert(data.error)
+    alert("Error guardando")
     return
   }
 
-  loadSchedules()
+  alert("Riego programado correctamente")
 }
+
 
 //recargar tabla sin refrescar
 async function loadSchedules(){
