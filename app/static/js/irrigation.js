@@ -104,24 +104,28 @@ async function cancelSchedule(id){
 }
 
 // Formulario de riego programado
-document.getElementById("scheduleForm")?.addEventListener("submit", async (e)=>{
-  e.preventDefault()
-  const sector = document.getElementById("sector").value
-  const date = document.getElementById("date").value
-  const time = document.getElementById("time").value
-  const res = await fetch("/irrigation/schedule", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sector, date, time })
-  })
-  const data = await res.json()
-  if(data.success){
-    e.target.reset()
-    loadSchedules()
-  }else{
-    alert("Error al guardar riego.")
-  }
+document.getElementById("scheduleForm").addEventListener("submit", async (e)=>{
+    e.preventDefault()
+
+    const sector = document.getElementById("sector").value
+    const date = document.getElementById("date").value
+    const time = document.getElementById("time").value
+
+    const r = await fetch("/irrigation/schedule", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({sector, date, time})
+    })
+
+    const res = await r.json()
+    if(res.success){
+        document.getElementById("scheduleForm").reset()
+        loadSchedules()  // función para refrescar tabla via AJAX
+    }else{
+        alert(res.message || "Error al guardar")
+    }
 })
+
 
 // ---------- HISTORIAL ----------
 async function loadLog(){
