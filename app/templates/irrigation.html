@@ -2,85 +2,63 @@
 {% block title %}Riego{% endblock %}
 
 {% block content %}
-<h2>💧 Zonas de riego</h2>
 
-<!-- SECCIÓN: NUEVO RIEGO PROGRAMADO -->
-<div class="card mb-4 p-3">
-    <h3>Nuevo riego programado</h3>
-    <form id="scheduleForm" class="row g-3">
-        <div class="col-md-3">
-            <label>Sector</label>
-            <select id="sector" class="form-select">
-                <option value="1">Sector 1</option>
-                <option value="2">Sector 2</option>
-                <option value="3">Sector 3</option>
-            </select>
-        </div>
-        <div class="col-md-3">
-            <label>Fecha</label>
-<input type="date" id="date" class="form-control" value="{{ today }}">
-        </div>
-        <div class="col-md-3">
-            <label>Hora</label>
-            <input type="time" id="time" class="form-control">
-        </div>
-        <div class="col-md-3 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">Guardar</button>
-        </div>
-    </form>
+<h2>💧 Riego</h2>
+
+<div class="card">
+  <h3>Programar riego</h3>
+
+  <select id="sector">
+    <option value="1">Sector 1</option>
+    <option value="2">Sector 2</option>
+    <option value="3">Sector 3</option>
+  </select>
+
+  <input type="date" id="date">
+  <input type="time" id="time">
+
+  <button onclick="createSchedule()">Guardar</button>
 </div>
 
-<!-- SECCIÓN: RIEGOS PROGRAMADOS -->
-<div class="card mb-4 p-3">
-    <h3>Riegos programados</h3>
-    <table class="table" id="scheduleTable">
-        <thead>
-            <tr>
-                <th>Sector</th>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <p id="noSchedules" class="text-center text-muted"></p>
+<div class="card">
+  <h3>Riegos programados</h3>
+  <div id="scheduleList"></div>
 </div>
 
-<!-- SECCIÓN: ZONAS MANUALES -->
-<h3>Riego Manual</h3>
-<div class="zones-grid mb-4">
-    {% for z in zones %}
-    <div class="zone-card" id="zone-{{ z[0] }}">
-        <div class="valve-wrapper">
-            <img class="valve-icon" src="{{ url_for('static', filename='img/valve.png') }}">
-        </div>
-        <h3>{{ z[1] }}</h3>
-        <div class="zone-status">APAGADO</div>
-        <div class="zone-timer" id="timer-{{ z[0] }}">00:00</div>
-        <button class="btn btn-success mt-2 w-100" onclick="toggleZone({{ z[0] }})">
-            Activar / Desactivar
-        </button>
-    </div>
+<div class="card">
+  <h3>Riego manual</h3>
+
+  <button onclick="manual(1)">Sector 1</button>
+  <button onclick="manual(2)">Sector 2</button>
+  <button onclick="manual(3)">Sector 3</button>
+</div>
+
+<div class="card">
+  <h3>Historial</h3>
+
+  {% if history %}
+  <table>
+    <tr>
+      <th>Sector</th>
+      <th>Inicio</th>
+      <th>Fin</th>
+      <th>Tipo</th>
+    </tr>
+
+    {% for h in history %}
+    <tr>
+      <td>{{ h[0] }}</td>
+      <td>{{ h[1] }}</td>
+      <td>{{ h[2] or "-" }}</td>
+      <td>{{ h[3] }}</td>
+    </tr>
     {% endfor %}
+  </table>
+  {% else %}
+    <p>No hay historial.</p>
+  {% endif %}
 </div>
 
-<!-- SECCIÓN: HISTORIAL DE RIEGOS -->
-<div class="card mb-4 p-3">
-    <h3>Últimos riegos</h3>
-    <table class="table" id="logTable">
-        <thead>
-            <tr>
-                <th>Sector</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Tipo</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <p id="noLog" class="text-center text-muted"></p>
-</div>
 {% endblock %}
 
 {% block scripts %}

@@ -83,40 +83,151 @@ def alarms():
 @routes.route("/irrigation")
 @login_required
 def irrigation():
+
     db = get_db()
-    zones = db.execute("""
-        SELECT id, name, gpio_pin, enabled
-        FROM irrigation_zones
+
+    # Riegos pendientes (máximo 10)
+    schedules = db.execute("""
+        SELECT id, sector, date, start_time
+        FROM irrigation_schedule
+        WHERE datetime(date || ' ' || start_time) > datetime('now')
+          AND enabled = 1
+        ORDER BY date ASC, start_time ASC
+        LIMIT 10
     """).fetchall()
 
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    # Historial últimos 10
+    history = db.execute("""
+        SELECT sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
 
     return render_template(
         "irrigation.html",
-        zones=zones,
-        today=today
+        schedules=schedules,
+        history=history
     )
 
 
 # Crear riego programado
-@routes.route("/irrigation/schedule", methods=["POST"])
+@routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
-def add_schedule():
+def schedule_add():
+
     data = request.json
     sector = data.get("sector")
     date = data.get("date")
     start_time = data.get("time")
 
-    if not all([sector, date, start_time]):
-        return jsonify({"success": False, "message": "Datos incompletos"}), 400
+    if not sector or not date or not start_time:
+        return jsonify({"error": "Datos incompletos"}), 400
 
     db = get_db()
+
     db.execute("""
         INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
         VALUES (?, ?, ?, 1)
     """, (sector, date, start_time))
+
     db.commit()
+
     return jsonify({"success": True})
+
+@routes.route("/irrigation/schedule/list")
+@login_required
+def schedule_list():
+
+    db = get_db()
+
+    rows = db.execute("""
+        SELECT id, sector, date, start_time
+        FROM irrigation_schedule
+        WHERE datetime(date || ' ' || start_time) > datetime('now')
+          AND enabled = 1
+        ORDER BY date ASC, start_time ASC
+        LIMIT 10
+    """).fetchall()
+
+    data = [
+        {
+            "id": r[0],
+            "sector": r[1],
+            "date": r[2],
+            "time": r[3]
+        }
+        for r in rows
+    ]
+
+    return jsonify(data)
+
+@routes.route("/irrigation/schedule/delete/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def schedule_delete(schedule_id):
+
+    db = get_db()
+
+    db.execute("""
+        DELETE FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,))
+
+    db.commit()
+
+    return jsonify({"success": True})
+
+
+@routes.route("/irrigation/manual/<int:sector>", methods=["POST"])
+@login_required
+def irrigation_manual(sector):
+
+    from app.hardware import zone_on, zone_off, zone_state
+
+    db = get_db()
+
+    if zone_state(sector):
+
+        zone_off(sector)
+
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time = ?
+            WHERE sector = ? AND end_time IS NULL
+        """, (datetime.now(), sector))
+
+    else:
+
+        zone_on(sector)
+
+        db.execute("""
+            INSERT INTO irrigation_log (sector, start_time, type)
+            VALUES (?, ?, 'manual')
+        """, (sector, datetime.now()))
+
+    db.commit()
+
+    return jsonify({"success": True})
+
+
+# @routes.route("/irrigation/schedule", methods=["POST"])
+# @login_required
+# def add_schedule():
+#     data = request.json
+#     sector = data.get("sector")
+#     date = data.get("date")
+#     start_time = data.get("time")
+#
+#     if not all([sector, date, start_time]):
+#         return jsonify({"success": False, "message": "Datos incompletos"}), 400
+#
+#     db = get_db()
+#     db.execute("""
+#         INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
+#         VALUES (?, ?, ?, 1)
+#     """, (sector, date, start_time))
+#     db.commit()
+#     return jsonify({"success": True})
 
 # Obtener riegos programados pendientes (max 10)
 @routes.route("/irrigation/schedule", methods=["GET"])
