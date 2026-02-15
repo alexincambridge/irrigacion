@@ -46,7 +46,6 @@ async function loadSchedules(){
         <td>${s.date}</td>
         <td>${s.start}</td>
         <td>${s.end}</td>
-        <td>${s.duration} min</td>
       </tr>
     `
   })

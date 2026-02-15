@@ -5,21 +5,15 @@ from datetime import datetime
 
 routes = Blueprint("routes", __name__)
 
-@routes.route("/debug/db")
-def debug_db():
-    import os
-    return os.path.abspath("instance/irrigation.db")
-
-
 @routes.route("/dashboard")
 @login_required
-def dashboard():
+def dashboard() :
     return render_template("dashboard.html")
 
 
 @routes.route("/water")
 @login_required
-def water_consumption():
+def water_consumption() :
     db = get_db()
     total = db.execute("""
         SELECT
@@ -37,7 +31,7 @@ def water_consumption():
 
 @routes.route("/water/data")
 @login_required
-def water_data():
+def water_data() :
     db = get_db()
     rows = db.execute("""
         SELECT timestamp, liters
@@ -47,7 +41,7 @@ def water_data():
     """).fetchall()
 
     return jsonify([
-        {"time": r[0], "liters": r[1]}
+        {"time" : r[0], "liters" : r[1]}
         for r in rows
     ])
 
@@ -63,37 +57,29 @@ def irrigation():
     """).fetchall()
 
     schedules = db.execute("""
-        SELECT id, start_time, duration, enabled
+        SELECT id, sector, start_time, enabled
         FROM irrigation_schedule
         ORDER BY start_time ASC
-        LIMIT 10
-    """).fetchall()
-
-    records = db.execute("""
-        SELECT sector, start_datetime, end_datetime, type
-        FROM irrigation_records
-        ORDER BY start_datetime DESC
-        LIMIT 10
     """).fetchall()
 
     return render_template(
         "irrigation.html",
         zones=zones,
-        schedules=schedules,
-        records=records
+        schedules=schedules
     )
+
 
 
 @routes.route("/irrigation/history")
 @login_required
-def irrigation_history():
+def irrigation_history() :
     db = get_db()
     rows = db.execute("""
         SELECT
             zone_id,
             start_time,
             end_time,
-            duration
+            
         FROM irrigation_events
         ORDER BY start_time DESC
         LIMIT 10
@@ -104,15 +90,16 @@ def irrigation_history():
         rows=rows
     )
 
+
 @routes.route("/irrigation/history/data")
 @login_required
-def irrigation_history_data():
+def irrigation_history_data() :
     db = get_db()
 
     rows = db.execute("""
         SELECT
             start_time,
-            duration
+            
         FROM irrigation_events
         ORDER BY start_time ASC
         LIMIT 50
@@ -120,15 +107,14 @@ def irrigation_history_data():
 
     return jsonify([
         {
-            "time": r[0],
-            "duration": r[1]
+            "time" : r[0],
         } for r in rows
     ])
 
 
 @routes.route("/dashboard/data")
 @login_required
-def dashboard_data():
+def dashboard_data() :
     db = get_db()
 
     sensor = db.execute("""
@@ -151,23 +137,24 @@ def dashboard_data():
     """).fetchone()
 
     return jsonify({
-        "temperature": sensor[0] if sensor else None,
-        "humidity": sensor[1] if sensor else None,
-        "solar": sensor[2] if sensor else None,
-        "pressure": sensor[3] if sensor else None,
-        "ec": sensor[4] if sensor else None,
-        "ph": sensor[5] if sensor else None,
-        "time": sensor[6] if sensor else None,
-        "water_liters": water[0] or 0,
+        "temperature" : sensor[0] if sensor else None,
+        "humidity" : sensor[1] if sensor else None,
+        "solar" : sensor[2] if sensor else None,
+        "pressure" : sensor[3] if sensor else None,
+        "ec" : sensor[4] if sensor else None,
+        "ph" : sensor[5] if sensor else None,
+        "time" : sensor[6] if sensor else None,
+        "water_liters" : water[0] or 0,
 
         # 🔥 NUEVO (DHT11)
-        "dht_temperature": dht[0] if dht else None,
-        "dht_humidity": dht[1] if dht else None
+        "dht_temperature" : dht[0] if dht else None,
+        "dht_humidity" : dht[1] if dht else None
     })
+
 
 @routes.route("/alarms")
 @login_required
-def alarms():
+def alarms() :
     db = get_db()
     rows = db.execute("""
         SELECT type, level, message, value, created_at
@@ -178,11 +165,11 @@ def alarms():
 
     return jsonify([
         {
-            "type": r[0],
-            "level": r[1],
-            "message": r[2],
-            "value": r[3],
-            "time": r[4]
+            "type" : r[0],
+            "level" : r[1],
+            "message" : r[2],
+            "value" : r[3],
+            "time" : r[4]
         }
         for r in rows
     ])
@@ -190,7 +177,7 @@ def alarms():
 
 @routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
-def schedule_add():
+def schedule_add() :
     data = request.get_json()
 
     sector = int(data["sector"])
@@ -205,7 +192,7 @@ def schedule_add():
 
     db.commit()
 
-    return jsonify({"success": True})
+    return jsonify({"success" : True})
 
 
 # @routes.route("/irrigation/schedule/add", methods=["POST"])
@@ -271,7 +258,7 @@ def schedule_add():
 
 @routes.route("/irrigation/schedule/list")
 @login_required
-def schedule_list():
+def schedule_list() :
     db = get_db()
 
     rows = db.execute("""
@@ -283,23 +270,23 @@ def schedule_list():
 
     return jsonify([
         {
-            "sector": r[0],
-            "date": r[1],
-            "start": r[2],
-            "end": r[3],
-            "duration": r[4]
+            "sector" : r[0],
+            "date" : r[1],
+            "start" : r[2],
+            "end" : r[3],
+            "duration" : r[4]
         }
         for r in rows
     ])
 
-def scheduler_loop():
 
+def scheduler_loop() :
     irrigation_off()  # seguridad al arrancar
 
     last_trigger = None
 
-    while True:
-        try:
+    while True :
+        try :
             conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
 
@@ -312,7 +299,7 @@ def scheduler_loop():
                   AND enabled = 1
             """, (now,)).fetchone()
 
-            if row and last_trigger != now:
+            if row and last_trigger != now :
                 sector = row[0]
 
                 print(f"Activando sector {sector}")
@@ -324,7 +311,7 @@ def scheduler_loop():
 
             conn.close()
 
-        except Exception as e:
+        except Exception as e :
             print("Scheduler error:", e)
 
         time.sleep(30)

@@ -9,35 +9,45 @@
 <div class="card">
   <h3>Nuevo riego programado</h3>
 
-  <div class="form-grid">
 
-    <label>Sector</label>
-    <select id="sector">
-  <option value="1">Sector 1</option>
-  <option value="2">Sector 2</option>
-  <option value="3">Sector 3</option>
-</select>
+  <label>Sector</label>
+  <select id="sector">
+    <option value="1">Sector 1</option>
+    <option value="2">Sector 2</option>
+    <option value="3">Sector 3</option>
+  </select>
 
-<input type="time" id="start">
+  <input type="time" id="start">
 
-<button onclick="createSchedule()">Guardar</button>
+  <button onclick="createSchedule()">Guardar</button>
 
 
-  </div>
 </div>
 
-<table id="scheduleTable">
-  <thead>
+<div class="card">
+  <h3>Riegos programados</h3>
+
+  {% if schedules %}
+  <table>
     <tr>
       <th>Sector</th>
-      <th>Fecha</th>
-      <th>Inicio</th>
-      <th>Fin</th>
-      <th>Duración</th>
+      <th>Hora</th>
+      <th>Estado</th>
     </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+
+    {% for s in schedules %}
+    <tr>
+      <td>{{ s[1] }}</td>
+      <td>{{ s[2] }}</td>
+      <td>{{ "ON" if s[3] else "OFF" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+    <p>No hay riegos programados.</p>
+  {% endif %}
+</div>
+
 <!-- ZONAS MANUALES -->
 <div class="zones-grid">
   {% for z in zones %}
