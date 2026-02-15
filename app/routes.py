@@ -10,6 +10,36 @@ routes = Blueprint("routes", __name__)
 def dashboard() :
     return render_template("dashboard.html")
 
+@routes.route("/irrigation/toggle/<int:zone_id>", methods=["POST"])
+@login_required
+def irrigation_toggle(zone_id):
+
+    from app.hardware import zone_on, zone_off, zone_state
+    db = get_db()
+
+    if zone_state(zone_id):
+
+        zone_off(zone_id)
+
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time = ?
+            WHERE sector = ? AND end_time IS NULL
+        """, (datetime.now(), zone_id))
+
+    else:
+
+        zone_on(zone_id)
+
+        db.execute("""
+            INSERT INTO irrigation_log (sector, start_time, type)
+            VALUES (?, ?, 'manual')
+        """, (zone_id, datetime.now()))
+
+    db.commit()
+
+    return jsonify({"status": "ok"})
+
 
 @routes.route("/water")
 @login_required
@@ -280,38 +310,4 @@ def schedule_list() :
     ])
 
 
-def scheduler_loop() :
-    irrigation_off()  # seguridad al arrancar
 
-    last_trigger = None
-
-    while True :
-        try :
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-
-            now = datetime.now().strftime("%H:%M")
-
-            row = cur.execute("""
-                SELECT sector
-                FROM irrigation_schedule
-                WHERE start_time = ?
-                  AND enabled = 1
-            """, (now,)).fetchone()
-
-            if row and last_trigger != now :
-                sector = row[0]
-
-                print(f"Activando sector {sector}")
-
-                # aquí luego puedes hacer zone_on(sector)
-                irrigation_on()
-
-                last_trigger = now
-
-            conn.close()
-
-        except Exception as e :
-            print("Scheduler error:", e)
-
-        time.sleep(30)

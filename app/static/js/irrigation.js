@@ -28,6 +28,7 @@ async function createSchedule(){
   }
 
   alert("Riego programado correctamente")
+  location.reload()
 }
 
 
