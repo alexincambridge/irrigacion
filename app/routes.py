@@ -171,3 +171,15 @@ def get_irrigation_log():
     """).fetchall()
     log = [dict(r) for r in rows]
     return jsonify(log)
+
+@routes.route("/irrigation/history")
+@login_required
+def irrigation_history():
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
+        LIMIT 20
+    """).fetchall()
+    return render_template("irrigation_history.html", rows=rows)
