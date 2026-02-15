@@ -1,140 +1,115 @@
 import sqlite3
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, "instance", "irrigation.db")
+DB_PATH = "instance/irrigacion.db"
+if os.path.exists(DB_PATH):
+    os.remove(DB_PATH)
 
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+def init_database():
 
-conn = sqlite3.connect(DB_PATH)
-cur = conn.cursor()
+    # Crear carpeta instance si no existe
+    os.makedirs("instance", exist_ok=True)
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS sensor_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    temperature REAL,
-    humidity REAL,
-    solar REAL,
-    pressure REAL,
-    ec REAL,
-    ph REAL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-)
-""")
+    print("🛠 Creando tablas...")
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS irrigation_schedule (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  start_time TEXT,      -- HH:MM
-  duration INTEGER,     -- minutos
-  enabled INTEGER DEFAULT 1
-)
-""")
+    # -------------------------
+    # ZONAS
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS irrigation_zones (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            gpio_pin INTEGER NOT NULL,
+            enabled INTEGER DEFAULT 1
+        )
+    """)
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS irrigation_log (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  start_time DATETIME,
-  end_time DATETIME,
-  duration INTEGER
-)
-# """)
-# cur.execute("""
-# CREATE TABLE irrigation_state (
-#   id INTEGER PRIMARY KEY,
-#   is_on INTEGER
-# )
-# """)
+    # Insertar zonas base si no existen
+    cur.execute("DELETE FROM irrigation_zones")
 
-cur.execute("""
-CREATE TABLE IF NOT EXISTS irrigation_zones (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  gpio_pin INTEGER NOT NULL,
-  enabled INTEGER DEFAULT 1
-)
-""")
+    cur.executemany("""
+        INSERT INTO irrigation_zones (id, name, gpio_pin, enabled)
+        VALUES (?, ?, ?, 1)
+    """, [
+        (1, "Sector 1", 23),
+        (2, "Sector 2", 24),
+        (3, "Sector 3", 25),
+    ])
 
-# INSERT INTO irrigation_zones (name, gpio_pin) VALUES
-# ('Jardín', 23),
-# ('Huerto', 24),
-# ('Goteo', 25);
+    # -------------------------
+    # PROGRAMACIÓN
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS irrigation_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sector INTEGER NOT NULL,
+            start_time TEXT NOT NULL,
+            enabled INTEGER DEFAULT 1
+        )
+    """)
 
-# tabla de eventos por zona
-cur.execute("""
-CREATE TABLE IF NOT EXISTS irrigation_events (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  zone_id INTEGER,
-  start_time DATETIME,
-  end_time DATETIME,
-  duration INTEGER,
-  FOREIGN KEY(zone_id) REFERENCES irrigation_zones(id)
-)
-""")
-# ALTER TABLE irrigation_zones ADD COLUMN is_active INTEGER DEFAULT 0;
-# ALTER TABLE irrigation_zones ADD COLUMN started_at TEXT;
-# CREATE TABLE IF NOT EXISTS dht_readings (
-#   id INTEGER PRIMARY KEY AUTOINCREMENT,
-#   temperature REAL NOT NULL,
-#   humidity REAL NOT NULL,
-#   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-# );
-# CREATE TABLE IF NOT EXISTS alarms (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     type TEXT NOT NULL,              -- temperature, humidity, solar...
-#     level TEXT NOT NULL,             -- info, warning, critical
-#     message TEXT NOT NULL,
-#     value REAL,
-#     threshold REAL,
-#     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-#     acknowledged INTEGER DEFAULT 0
-# );
+    # -------------------------
+    # LOG DE RIEGOS
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS irrigation_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sector INTEGER,
+            start_time TEXT,
+            end_time TEXT,
+            type TEXT
+        )
+    """)
 
-cur.execute(""""
-CREATE TABLE IF NOT EXISTS dht_readings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    temperature REAL NOT NULL,
-    humidity REAL NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-""")
+    # -------------------------
+    # CONSUMO AGUA
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS water_consumption (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            irrigation_id INTEGER,
+            liters REAL,
+            cost REAL,
+            timestamp TEXT
+        )
+    """)
 
-# CREATE TABLE irrigation_programs (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     zone_id INTEGER NOT NULL,
-#     mode TEXT NOT NULL,             -- 'weekly' o 'monthly'
-#     days TEXT NOT NULL,             -- JSON string: "1,3,5" o "15,30"
-#     start_time TEXT NOT NULL,       -- "HH:MM"
-#     end_time TEXT NOT NULL,         -- "HH:MM"
-#     enabled INTEGER DEFAULT 1
-# );
+    # -------------------------
+    # SENSOR DATA GENERAL
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sensor_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            temperature REAL,
+            humidity REAL,
+            solar REAL,
+            pressure REAL,
+            ec REAL,
+            ph REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
-# CREATE TABLE irrigation_records (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     sector INTEGER NOT NULL,
-#     start_datetime TEXT NOT NULL,
-#     end_datetime TEXT NOT NULL,
-#     type TEXT NOT NULL CHECK(type IN ('manual','programado'))
-# );
+    # -------------------------
+    # DHT11
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS dht_readings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            temperature REAL,
+            humidity REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
-# cur.execute("""
-#     INSERT INTO irrigation_log (sector, start_time)
-#     VALUES (?, ?)
-# """, (sector, now))
-#
-# log_id = cur.lastrowid
-# conn.commit()
+    conn.commit()
+    conn.close()
+
+    print("✅ Base de datos inicializada correctamente.")
 
 
-conn.commit()
-conn.close()
-
-print("✅ Base de datos inicializada correctamente")
+if __name__ == "__main__":
+    init_database()

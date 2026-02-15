@@ -108,3 +108,7 @@ Crear un sistema de riego inteligente, robusto y extensible, válido tanto para 
      │ - Relé / Válvula      │
      └───────────────────────┘
 
+sudo systemctl start irrigation
+sudo systemctl stop irrigation
+sudo systemctl restart irrigation
+sudo systemctl status irrigation
