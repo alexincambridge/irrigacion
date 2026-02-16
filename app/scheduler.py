@@ -1,15 +1,16 @@
+from datetime import datetime
+from app.hardware import zone_on, zone_off
 import sqlite3
-from datetime import datetime, time
+import time
 
-from app import irrigation_off
-from app.db import DB_PATH
-from app.hardware import irrigation_on
+DB_PATH = "instance/irrigacion.db"
+DEFAULT_DURATION = 1
+
+_last_run = None
 
 
-def scheduler_loop(DEFAULT_DURATION=None):
+def scheduler_loop():
     global _last_run
-
-    irrigation_off()  # seguridad al arrancar
 
     while True:
         try:
@@ -31,13 +32,12 @@ def scheduler_loop(DEFAULT_DURATION=None):
 
             if row and _last_run != now_time:
 
-                _last_run = now_time
                 sector = row["sector"]
+                _last_run = now_time
 
                 print(f"[SCHEDULER] Activando sector {sector}")
 
-                # Activar zona
-                irrigation_on(sector)
+                zone_on(sector)
 
                 start_time = datetime.now()
 
@@ -47,12 +47,9 @@ def scheduler_loop(DEFAULT_DURATION=None):
                 """, (sector, start_time))
                 conn.commit()
 
-                # Duración fija
                 time.sleep(DEFAULT_DURATION * 60)
 
-                irrigation_off(sector)
-
-                end_time = datetime.now()
+                zone_off(sector)
 
                 cur.execute("""
                     UPDATE irrigation_log
@@ -60,7 +57,7 @@ def scheduler_loop(DEFAULT_DURATION=None):
                     WHERE end_time IS NULL
                       AND sector = ?
                       AND type = 'programado'
-                """, (end_time, sector))
+                """, (datetime.now(), sector))
                 conn.commit()
 
                 print(f"[SCHEDULER] Sector {sector} finalizado")
