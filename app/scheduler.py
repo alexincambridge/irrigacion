@@ -1,51 +1,44 @@
-from datetime import datetime, timedelta
-from app.hardware import irrigation_on, irrigation_off
 import sqlite3
-import time
-import random
+from datetime import datetime, time
 
-DB_PATH = "instance/irrigacion.db"
+from app import irrigation_off
+from app.db import DB_PATH
+from app.hardware import irrigation_on
 
-# CONSTANTS
-FLOW_RATE = 8.0        # litros por minuto
-WATER_COST = 0.002     # €/litro (ejemplo)
-DEFAULT_DURATION = 1   # duración en minutos si no usamos columna duration
 
-_last_run = None
-
-# -------------------------------------------------------
-# Función principal del scheduler
-# -------------------------------------------------------
-def scheduler_loop():
+def scheduler_loop(DEFAULT_DURATION=None):
     global _last_run
 
-    # 🔒 Seguridad: al arrancar siempre cerramos riego
-    irrigation_off()
+    irrigation_off()  # seguridad al arrancar
 
     while True:
         try:
             conn = sqlite3.connect(DB_PATH, timeout=10)
+            conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
             now = datetime.now()
-            now_str = now.strftime("%H:%M")
-            today_str = now.strftime("%Y-%m-%d")
+            now_time = now.strftime("%H:%M")
+            today = now.strftime("%Y-%m-%d")
 
-            # Buscar riego programado para hoy
             row = cur.execute("""
                 SELECT id, sector
                 FROM irrigation_schedule
-                WHERE start_time = ?
-                  AND date = ?
+                WHERE date = ?
+                  AND start_time = ?
                   AND enabled = 1
-            """, (now_str, today_str)).fetchone()
+            """, (today, now_time)).fetchone()
 
-            if row and _last_run != now_str:
-                schedule_id, sector = row
-                _last_run = now_str
+            if row and _last_run != now_time:
 
-                # ▶️ INICIO RIEGO
-                irrigation_on(sector)   # activamos GPIO correspondiente
+                _last_run = now_time
+                sector = row["sector"]
+
+                print(f"[SCHEDULER] Activando sector {sector}")
+
+                # Activar zona
+                irrigation_on(sector)
+
                 start_time = datetime.now()
 
                 cur.execute("""
@@ -54,37 +47,27 @@ def scheduler_loop():
                 """, (sector, start_time))
                 conn.commit()
 
-                # ⏱️ DURACIÓN FIJA
+                # Duración fija
                 time.sleep(DEFAULT_DURATION * 60)
 
-                # ⏹️ FIN RIEGO
                 irrigation_off(sector)
+
                 end_time = datetime.now()
 
                 cur.execute("""
                     UPDATE irrigation_log
                     SET end_time = ?
-                    WHERE end_time IS NULL AND sector = ? AND type='programado'
+                    WHERE end_time IS NULL
+                      AND sector = ?
+                      AND type = 'programado'
                 """, (end_time, sector))
                 conn.commit()
 
-                # 💧 Registrar litros y coste
-                liters = DEFAULT_DURATION * FLOW_RATE
-                cost = liters * WATER_COST
-
-                cur.execute("""
-                    INSERT INTO water_consumption (irrigation_id, liters, cost, timestamp)
-                    VALUES (
-                        (SELECT id FROM irrigation_log ORDER BY id DESC LIMIT 1),
-                        ?, ?, ?
-                    )
-                """, (liters, cost, end_time))
-                conn.commit()
+                print(f"[SCHEDULER] Sector {sector} finalizado")
 
             conn.close()
 
         except Exception as e:
             print("Scheduler error:", e)
 
-        # ⏲️ Revisar cada 30 segundos
-        time.sleep(30)
+        time.sleep(10)
