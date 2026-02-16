@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = "instance/irrigacion.db"
+DB_PATH = "instance/irrigation.db"
 if os.path.exists(DB_PATH):
     os.remove(DB_PATH)
 
@@ -105,6 +105,22 @@ def init_database():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # -------------------------
+    # irrigation records
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE irrigation_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sector INTEGER NOT NULL,
+            start_datetime TEXT NOT NULL,
+            end_datetime TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('manual','programado'))
+    
+       )
+    """)
+
+
 
     conn.commit()
     conn.close()
