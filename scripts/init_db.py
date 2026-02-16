@@ -44,10 +44,11 @@ def init_database():
     # -------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS irrigation_schedule (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sector INTEGER NOT NULL,
-            start_time TEXT NOT NULL,
-            enabled INTEGER DEFAULT 1
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sector INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1
         )
     """)
 
