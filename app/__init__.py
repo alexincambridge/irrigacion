@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 from app.auth import auth, init_login_manager
-from app.hardware import irrigation_off
+from app.hardware import zone_off, zone_on
 from app.routes import routes
 from app.gpio import relay_off
 from app.irrigation import irrigation
@@ -11,7 +11,7 @@ from app.db import close_db
 def create_app() :
     app = Flask(__name__)
 
-    irrigation_off()
+    zone_off()
     app.secret_key = "dev-secret"
     app.register_blueprint(irrigation)
     app.teardown_appcontext(close_db)
