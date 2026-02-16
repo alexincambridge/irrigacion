@@ -4,7 +4,7 @@ import sqlite3
 
 import time
 
-DB_PATH = "instance/irrigacion.db"
+DB_PATH = "instance/irrigation.db"
 DEFAULT_DURATION = 1
 
 _last_run = None
