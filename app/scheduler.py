@@ -1,6 +1,7 @@
 from datetime import datetime
 from app.hardware import zone_on, zone_off
 import sqlite3
+
 import time
 
 DB_PATH = "instance/irrigacion.db"
