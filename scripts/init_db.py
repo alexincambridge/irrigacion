@@ -119,6 +119,21 @@ def init_database():
     
        )
     """)
+    # -------------------------
+    # irrigation schedule
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE irrigation_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sector INTEGER NOT NULL,
+            date TEXT NOT NULL,              -- 2026-02-13
+            start_time TEXT NOT NULL,        -- 18:00
+            end_time TEXT NOT NULL,          -- 18:30
+            duration INTEGER NOT NULL,       -- minutos
+            enabled INTEGER DEFAULT 1
+    )
+
+    """)
 
 
 

@@ -3,7 +3,6 @@ import sqlite3
 import os
 import time
 import random
-sensor_simulator.py
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, "instance", "irrigation.db")
 
