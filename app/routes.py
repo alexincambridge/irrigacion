@@ -115,25 +115,30 @@ def irrigation():
 @routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
 def schedule_add():
+    try:
 
-    data = request.get_json()
+        data = request.get_json()
 
-    sector = int(data.get("sector"))
-    date = data.get("date")
-    start_time = data.get("start_time")[:5]
-    end_time = data.get("end_time")[:5]
+        sector = int(data.get("sector"))
+        date = data.get("date")
+        start_time = data.get("start_time")[:5]
+        end_time = data.get("end_time")[:5]
 
-    db = get_db()
+        db = get_db()
 
-    db.execute("""
-        INSERT INTO irrigation_schedule 
-        (sector, date, start_time, end_time, enabled)
-        VALUES (?, ?, ?, ?, 1)
-    """, (sector, date, start_time, end_time))
+        db.execute("""
+            INSERT INTO irrigation_schedule 
+            (sector, date, start_time, end_time, enabled)
+            VALUES (?, ?, ?, ?, 1)
+        """, (sector, date, start_time, end_time))
 
-    db.commit()
+        db.commit()
 
-    return jsonify({"success": True})
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("🔥 ERROR REAL:", e)
+        return jsonify({"error": str(e)}), 500
 
 @routes.route("/irrigation/schedule/list")
 @login_required
