@@ -85,3 +85,21 @@ async function loadSchedules(){
 
     container.innerHTML = html
 }
+
+async function deleteSchedule(id){
+
+    await fetch(`/irrigation/schedule/delete/${id}`, {
+        method: "DELETE"
+    })
+
+    loadSchedules()
+}
+
+async function manual(sector){
+
+    await fetch(`/irrigation/manual/${sector}`, {
+        method: "POST"
+    })
+}
+
+loadSchedules()
