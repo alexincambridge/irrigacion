@@ -2,16 +2,34 @@ async function createSchedule() {
 
     const sector = document.getElementById("sector").value
     const date = document.getElementById("date").value
-    const time = document.getElementById("time").value
+    const start_time = document.getElementById("time").value
+    const end_time = document.getElementById("end_time").value
+
+    if(!sector || !date || !start_time || !end_time){
+        alert("Completa todos los campos")
+        return
+    }
+
+    if(end_time <= start_time){
+        alert("La hora de fin debe ser mayor que la de inicio")
+        return
+    }
 
     const res = await fetch("/irrigation/schedule/add", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({sector, date, time})
+        body: JSON.stringify({
+            sector,
+            date,
+            start_time,
+            end_time
+        })
     })
 
     if(res.ok){
         loadSchedules()
+    } else {
+        console.error("Error creando programación")
     }
 }
 
@@ -27,15 +45,29 @@ async function loadSchedules(){
         return
     }
 
-    let html = "<table><tr><th>Sector</th><th>Fecha</th><th>Hora</th><th></th></tr>"
+    let html = `
+        <table>
+        <tr>
+            <th>Sector</th>
+            <th>Fecha</th>
+            <th>Inicio</th>
+            <th>Fin</th>
+            <th></th>
+        </tr>
+    `
 
     data.forEach(r => {
         html += `
         <tr>
             <td>${r.sector}</td>
             <td>${r.date}</td>
-            <td>${r.time}</td>
-            <td><button onclick="deleteSchedule(${r.id})">Cancelar</button></td>
+            <td>${r.start_time}</td>
+            <td>${r.end_time}</td>
+            <td>
+                <button onclick="deleteSchedule(${r.id})">
+                    Cancelar
+                </button>
+            </td>
         </tr>`
     })
 
@@ -43,21 +75,3 @@ async function loadSchedules(){
 
     container.innerHTML = html
 }
-
-async function deleteSchedule(id){
-
-    await fetch(`/irrigation/schedule/delete/${id}`, {
-        method: "DELETE"
-    })
-
-    loadSchedules()
-}
-
-async function manual(sector){
-
-    await fetch(`/irrigation/manual/${sector}`, {
-        method: "POST"
-    })
-}
-
-loadSchedules()

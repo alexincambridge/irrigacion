@@ -123,7 +123,8 @@ def schedule_add():
 
         sector = int(data.get("sector"))
         date = data.get("date")
-        start_time = data.get("time")
+        start_time = data.get("start_time")[:5]
+        end_time = data.get("end_time")[:5]
 
         if not sector or not date or not start_time:
             return jsonify({"error": "Datos incompletos"}), 400
@@ -131,9 +132,9 @@ def schedule_add():
         db = get_db()
 
         db.execute("""
-            INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
+            INSERT INTO irrigation_schedule (sector, date, start_time, end_time, enabled)
             VALUES (?, ?, ?, 1)
-        """, (sector, date, start_time))
+        """, (sector, date, start_time, end_time))
 
         db.commit()
 
