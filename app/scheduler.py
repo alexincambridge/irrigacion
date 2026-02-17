@@ -18,8 +18,6 @@ def scheduler_loop():
             conn.row_factory = sqlite3.Row
             cur = conn.cursor()
 
-            print("HOY:", today)
-            print("AHORA:", now_time)
 
             now = datetime.now()
             now_time = now.strftime("%H:%M")
@@ -62,7 +60,6 @@ def scheduler_loop():
                               AND type = 'programado'
                         """, (now.strftime("%Y-%m-%d %H:%M:%S"), sector))
                         conn.commit()
-                print("RIEGOS ENCONTRADOS:", rows)
 
             conn.close()
 
