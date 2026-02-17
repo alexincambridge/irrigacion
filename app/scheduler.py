@@ -11,7 +11,6 @@ _last_run = None
 
 
 def scheduler_loop():
-    global _last_run
 
     while True:
         try:
@@ -23,45 +22,43 @@ def scheduler_loop():
             now_time = now.strftime("%H:%M")
             today = now.strftime("%Y-%m-%d")
 
-            row = cur.execute("""
-                SELECT id, sector
+            # Buscar riegos activos ahora mismo
+            rows = cur.execute("""
+                SELECT sector
                 FROM irrigation_schedule
                 WHERE date = ?
-                  AND start_time = ?
                   AND enabled = 1
-            """, (today, now_time)).fetchone()
+                  AND start_time <= ?
+                  AND end_time > ?
+            """, (today, now_time, now_time)).fetchall()
 
-            if row and _last_run != now_time:
+            active_sectors = {row["sector"] for row in rows}
 
-                sector = row["sector"]
-                _last_run = now_time
+            # Comprobar todos los sectores
+            for sector in [1, 2, 3]:
 
-                print(f"[SCHEDULER] Activando sector {sector}")
+                if sector in active_sectors:
+                    if not zone_state(sector):
+                        zone_on(sector)
 
-                zone_on(sector)
+                        cur.execute("""
+                            INSERT INTO irrigation_log (sector, start_time, type)
+                            VALUES (?, ?, 'programado')
+                        """, (sector, now.strftime("%Y-%m-%d %H:%M:%S")))
+                        conn.commit()
 
-                start_time = datetime.now()
+                else:
+                    if zone_state(sector):
+                        zone_off(sector)
 
-                cur.execute("""
-                    INSERT INTO irrigation_log (sector, start_time, type)
-                    VALUES (?, ?, 'programado')
-                """, (sector, start_time))
-                conn.commit()
-
-                time.sleep(DEFAULT_DURATION * 60)
-
-                zone_off(sector)
-
-                cur.execute("""
-                    UPDATE irrigation_log
-                    SET end_time = ?
-                    WHERE end_time IS NULL
-                      AND sector = ?
-                      AND type = 'programado'
-                """, (datetime.now(), sector))
-                conn.commit()
-
-                print(f"[SCHEDULER] Sector {sector} finalizado")
+                        cur.execute("""
+                            UPDATE irrigation_log
+                            SET end_time = ?
+                            WHERE end_time IS NULL
+                              AND sector = ?
+                              AND type = 'programado'
+                        """, (now.strftime("%Y-%m-%d %H:%M:%S"), sector))
+                        conn.commit()
 
             conn.close()
 

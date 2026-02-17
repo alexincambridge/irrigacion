@@ -4,9 +4,9 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 ZONE_PINS = {
-    1: 23,
-    2: 24,
-    3: 25,
+    1: 23, # sector 1
+    2: 24, # sector 2
+    3: 25, # sector 3
 }
 
 _active_zones = set()
