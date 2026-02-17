@@ -1,9 +1,19 @@
 async function createSchedule() {
 
-    const sector = document.getElementById("sector").value
-    const date = document.getElementById("date").value
-    const start_time = document.getElementById("time").value
-    const end_time = document.getElementById("end_time").value
+    const sectorEl = document.getElementById("sector")
+    const dateEl = document.getElementById("date")
+    const startEl = document.getElementById("time")
+    const endEl = document.getElementById("end_time")
+
+    if(!sectorEl || !dateEl || !startEl || !endEl){
+        console.error("Faltan elementos en el HTML")
+        return
+    }
+
+    const sector = sectorEl.value
+    const date = dateEl.value
+    const start_time = startEl.value
+    const end_time = endEl.value
 
     if(!sector || !date || !start_time || !end_time){
         alert("Completa todos los campos")

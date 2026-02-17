@@ -116,20 +116,20 @@ def irrigation():
 @login_required
 def schedule_add():
 
-    data = request.json
-    sector = data.get("sector")
-    date = data.get("date")
-    start_time = data.get("time")
+    data = request.get_json()
 
-    if not sector or not date or not start_time:
-        return jsonify({"error": "Datos incompletos"}), 400
+    sector = int(data.get("sector"))
+    date = data.get("date")
+    start_time = data.get("start_time")[:5]
+    end_time = data.get("end_time")[:5]
 
     db = get_db()
 
     db.execute("""
-        INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
-        VALUES (?, ?, ?, 1)
-    """, (sector, date, start_time))
+        INSERT INTO irrigation_schedule 
+        (sector, date, start_time, end_time, enabled)
+        VALUES (?, ?, ?, ?, 1)
+    """, (sector, date, start_time, end_time))
 
     db.commit()
 
