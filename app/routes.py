@@ -194,7 +194,7 @@ def irrigation_manual(sector):
             UPDATE irrigation_log
             SET end_time = ?
             WHERE sector = ? AND end_time IS NULL
-        """, (datetime.now(), sector))
+        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sector))
 
     else:
 
@@ -203,7 +203,7 @@ def irrigation_manual(sector):
         db.execute("""
             INSERT INTO irrigation_log (sector, start_time, type)
             VALUES (?, ?, 'manual')
-        """, (sector, datetime.now()))
+        """, (sector, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     db.commit()
 
