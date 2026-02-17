@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.hardware import zone_on, zone_off
+from app.hardware import zone_on, zone_off, zone_state
 import sqlite3
 
 import time
