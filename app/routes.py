@@ -147,25 +147,25 @@ def schedule_list():
     db = get_db()
 
     rows = db.execute("""
-        SELECT id, sector, date, start_time
+        SELECT id, sector, date, start_time, end_time
         FROM irrigation_schedule
-        WHERE datetime(date || ' ' || start_time) > datetime('now')
-          AND enabled = 1
-        ORDER BY date ASC, start_time ASC
+        WHERE enabled = 1
+        ORDER BY date, start_time
         LIMIT 10
     """).fetchall()
 
-    data = [
-        {
+    schedules = []
+
+    for r in rows:
+        schedules.append({
             "id": r[0],
             "sector": r[1],
             "date": r[2],
-            "time": r[3]
-        }
-        for r in rows
-    ]
+            "start_time": r[3],
+            "end_time": r[4]
+        })
 
-    return jsonify(data)
+    return jsonify(schedules)
 
 @routes.route("/irrigation/schedule/delete/<int:schedule_id>", methods=["DELETE"])
 @login_required
