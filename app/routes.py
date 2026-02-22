@@ -310,3 +310,28 @@ def irrigation_history():
         LIMIT 20
     """).fetchall()
     return render_template("irrigation_history.html", rows=rows)
+
+@routes.route("/logs")
+@login_required
+def irrigation_logs():
+
+    db = get_db()
+
+    rows = db.execute("""
+        SELECT sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY start_time DESC
+        LIMIT 50
+    """).fetchall()
+
+    logs = []
+
+    for r in rows:
+        logs.append({
+            "sector": r[0],
+            "start_time": r[1],
+            "end_time": r[2],
+            "type": r[3]
+        })
+
+    return render_template("logs.html", logs=logs)
