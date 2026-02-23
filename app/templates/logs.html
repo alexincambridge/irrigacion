@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Logs de Riego{% endblock %}
+
+{% block content %}
+
+<h2>📋 Historial de Riegos</h2>
+
+<div class="card">
+
+  {% if logs %}
+  <table>
+    <tr>
+      <th>Sector</th>
+      <th>Inicio</th>
+      <th>Fin</th>
+      <th>Tipo</th>
+      <th>Duración</th>
+    </tr>
+
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.sector }}</td>
+      <td>{{ log.start_time }}</td>
+      <td>{{ log.end_time if log.end_time else "En curso" }}</td>
+      <td>
+        {% if log.type == "manual" %}
+          🔵 Manual
+        {% else %}
+          🟢 Programado
+        {% endif %}
+      </td>
+      <td>
+        {% if log.end_time %}
+          {{ (
+            (log.end_time | tojson | safe)
+          ) }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+
+  </table>
+  {% else %}
+    <p>No hay registros todavía.</p>
+  {% endif %}
+
+</div>
+
+{% endblock %}
