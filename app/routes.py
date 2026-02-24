@@ -124,13 +124,21 @@ def schedule_add():
         start_time = data.get("start_time")[:5]
         end_time = data.get("end_time")[:5]
 
+        # Calcular duración en minutos
+        start_hour, start_min = map(int, start_time.split(':'))
+        end_hour, end_min = map(int, end_time.split(':'))
+
+        start_minutes = start_hour * 60 + start_min
+        end_minutes = end_hour * 60 + end_min
+        duration_minutes = end_minutes - start_minutes
+
         db = get_db()
 
         db.execute("""
             INSERT INTO irrigation_schedule 
-            (sector, date, start_time, end_time, enabled)
-            VALUES (?, ?, ?, ?, 1)
-        """, (sector, date, start_time, end_time))
+            (sector, date, start_time, end_time, duration_minutes, status, priority, enabled)
+            VALUES (?, ?, ?, ?, ?, 'en espera', 0, 1)
+        """, (sector, date, start_time, end_time, duration_minutes))
 
         db.commit()
 
@@ -146,11 +154,46 @@ def schedule_list():
 
     db = get_db()
 
-    rows = db.execute("""
-        SELECT id, sector, date, start_time, end_time
+    # Primero, eliminar riegos que ya terminaron
+    from datetime import datetime
+    now = datetime.now()
+    current_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    # Obtener riegos vencidos
+    vencidos = db.execute("""
+        SELECT id, sector, start_time, end_time, duration_minutes
         FROM irrigation_schedule
         WHERE enabled = 1
-        ORDER BY date, start_time
+        AND datetime(date || ' ' || end_time) <= ?
+    """, (current_datetime,)).fetchall()
+
+    # Registrar en log y eliminar
+    for row in vencidos:
+        schedule_id = row[0]
+        sector = row[1]
+        start_time = row[2]
+        end_time = row[3]
+
+        # Registrar finalización en log si no está ya registrado
+        db.execute("""
+            INSERT OR IGNORE INTO irrigation_log (sector, start_time, end_time, type, scheduled_id)
+            VALUES (?, ?, ?, 'programado', ?)
+        """, (sector, f"{now.strftime('%Y-%m-%d')} {start_time}", f"{now.strftime('%Y-%m-%d')} {end_time}", schedule_id))
+
+        # Marcar como no activo
+        db.execute("""
+            UPDATE irrigation_schedule
+            SET enabled = 0
+            WHERE id = ?
+        """, (schedule_id,))
+
+    db.commit()
+
+    rows = db.execute("""
+        SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, enabled
+        FROM irrigation_schedule
+        WHERE enabled = 1
+        ORDER BY priority DESC, date ASC, start_time ASC
         LIMIT 10
     """).fetchall()
 
@@ -162,7 +205,11 @@ def schedule_list():
             "sector": r[1],
             "date": r[2],
             "start_time": r[3],
-            "end_time": r[4]
+            "end_time": r[4],
+            "duration_minutes": r[5],
+            "status": r[6],
+            "priority": r[7],
+            "enabled": r[8]
         })
 
     return jsonify(schedules)
@@ -291,19 +338,23 @@ def zones_status():
 def history_list():
     db = get_db()
     rows = db.execute("""
-        SELECT sector, start_time, end_time, type
+        SELECT sector, start_time, end_time, type, duration_minutes, status, id, scheduled_id
         FROM irrigation_log
         ORDER BY id DESC
-        LIMIT 20
+        LIMIT 50
     """).fetchall()
 
     history = []
     for row in rows:
         history.append({
+            "id": row[6],
             "sector": row[0],
             "start_time": row[1],
             "end_time": row[2],
-            "type": row[3]
+            "type": row[3],
+            "duration_minutes": row[4],
+            "status": row[5],
+            "scheduled_id": row[7]
         })
 
     return jsonify(history)

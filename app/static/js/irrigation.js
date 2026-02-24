@@ -204,8 +204,30 @@ function renderSchedules(schedules) {
             4: 'Árboles'
         };
 
+        // Determinar si está regando en este momento
+        const now = new Date();
+        const [startH, startM] = schedule.start_time.split(':').map(Number);
+        const [endH, endM] = schedule.end_time.split(':').map(Number);
+        const currentHour = now.getHours();
+        const currentMin = now.getMinutes();
+
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+        const currentTotal = currentHour * 60 + currentMin;
+
+        const isActive = currentTotal >= startTotal && currentTotal < endTotal;
+        const status = isActive ? 'regando' : 'en espera';
+
+        // Color para estado
+        const statusColor = isActive ? '#22c55e' : '#3b82f6';
+        const statusText = isActive ? '● REGANDO' : '◯ EN ESPERA';
+
         html += `
-            <div class="schedule-item" data-schedule-id="${schedule.id}">
+            <div class="schedule-item ${isActive ? 'active' : ''}" data-schedule-id="${schedule.id}">
+                <div class="schedule-priority">
+                    ${'⭐'.repeat(Math.min(3, schedule.priority + 1))}
+                </div>
+
                 <div class="schedule-info">
                     <div class="schedule-detail">
                         <div class="schedule-label">Sector</div>
@@ -226,7 +248,14 @@ function renderSchedules(schedules) {
 
                     <div class="schedule-detail">
                         <div class="schedule-label">Duración</div>
-                        <div class="schedule-value">${calculateDuration(schedule.start_time, schedule.end_time)}</div>
+                        <div class="schedule-value">${schedule.duration_minutes} min</div>
+                    </div>
+
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Estado</div>
+                        <div class="schedule-value schedule-status" style="color: ${statusColor};">
+                            ${statusText}
+                        </div>
                     </div>
                 </div>
 
@@ -421,7 +450,20 @@ function renderHistory(history) {
         return;
     }
 
-    let html = '';
+    let html = `
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Sector</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Duración (min)</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
 
     filteredHistory.forEach(record => {
         const sectorNames = {
@@ -433,44 +475,30 @@ function renderHistory(history) {
 
         const icon = record.type === 'manual' ? '👤' : '📅';
         const typeText = record.type === 'manual' ? 'Manual' : 'Programado';
+        const statusText = record.status ? record.status.toUpperCase() : 'COMPLETADO';
+
+        // Calcular duración si no está en la BD
+        let duration = record.duration_minutes;
+        if (!duration && record.start_time && record.end_time) {
+            duration = Math.floor(calculateTimeDiff(record.start_time, record.end_time).split(' ')[0]);
+        }
 
         html += `
-            <div class="history-item ${record.type}" data-history-start="${record.start_time}">
-                <div class="history-icon">${icon}</div>
-
-                <div class="history-content">
-                    <div class="history-field">
-                        <div class="history-field-label">Sector</div>
-                        <div class="history-field-value">
-                            ${record.sector} - ${sectorNames[record.sector] || 'Sector ' + record.sector}
-                        </div>
-                    </div>
-
-                    <div class="history-field">
-                        <div class="history-field-label">Inicio</div>
-                        <div class="history-field-value">${formatDateTime(record.start_time)}</div>
-                    </div>
-
-                    <div class="history-field">
-                        <div class="history-field-label">Fin</div>
-                        <div class="history-field-value">${record.end_time ? formatDateTime(record.end_time) : 'En curso...'}</div>
-                    </div>
-
-                    <div class="history-field">
-                        <div class="history-field-label">Tipo</div>
-                        <div class="history-field-value">${typeText}</div>
-                    </div>
-
-                    ${record.end_time ? `
-                        <div class="history-field">
-                            <div class="history-field-label">Duración</div>
-                            <div class="history-field-value">${calculateTimeDiff(record.start_time, record.end_time)}</div>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
+            <tr class="history-row">
+                <td><strong>${record.sector}</strong> - ${sectorNames[record.sector] || 'Sector'}</td>
+                <td>${formatDateTime(record.start_time)}</td>
+                <td>${record.end_time ? formatDateTime(record.end_time) : 'En curso...'}</td>
+                <td>${duration || '-'} min</td>
+                <td>${icon} ${typeText}</td>
+                <td><span class="status-badge">${statusText}</span></td>
+            </tr>
         `;
     });
+
+    html += `
+            </tbody>
+        </table>
+    `;
 
     container.innerHTML = html;
 }

@@ -48,7 +48,12 @@ def init_database():
     sector INTEGER NOT NULL,
     date TEXT NOT NULL,
     start_time TEXT NOT NULL,
-    enabled INTEGER DEFAULT 1
+    end_time TEXT NOT NULL,
+    duration_minutes INTEGER,
+    priority INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'en espera',
+    enabled INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -61,7 +66,11 @@ def init_database():
             sector INTEGER,
             start_time TEXT,
             end_time TEXT,
-            type TEXT
+            type TEXT,
+            scheduled_id INTEGER,
+            duration_minutes INTEGER,
+            status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
