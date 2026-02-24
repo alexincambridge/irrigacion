@@ -191,20 +191,17 @@ def irrigation_manual(sector):
 
     db = get_db()
 
-    if zone_state(sector):
+    is_active = zone_state(sector)
 
+    if is_active:
         zone_off(sector)
-
         db.execute("""
             UPDATE irrigation_log
             SET end_time = ?
             WHERE sector = ? AND end_time IS NULL
         """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sector))
-
     else:
-
         zone_on(sector)
-
         db.execute("""
             INSERT INTO irrigation_log (sector, start_time, type)
             VALUES (?, ?, 'manual')
@@ -212,7 +209,11 @@ def irrigation_manual(sector):
 
     db.commit()
 
-    return jsonify({"success": True})
+    return jsonify({
+        "success": True,
+        "active": not is_active,  # Return new state
+        "sector": sector
+    })
 
 
 # @routes.route("/irrigation/schedule", methods=["POST"])
@@ -258,6 +259,82 @@ def delete_schedule(schedule_id):
     db.execute("DELETE FROM irrigation_schedule WHERE id=?", (schedule_id,))
     db.commit()
     return jsonify({"success": True})
+
+# Get zone status for real-time updates
+@routes.route("/irrigation/zones/status")
+@login_required
+def zones_status():
+    try:
+        from app.hardware import zone_state
+
+        zones = {}
+        for zone_id in range(1, 5):  # Zones 1-4
+            zones[zone_id] = {
+                "active": zone_state(zone_id),
+                "duration": 0  # Can be enhanced with timer tracking
+            }
+
+        return jsonify({
+            "success": True,
+            "zones": zones
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "zones": {}
+        })
+
+# Get irrigation history asynchronously
+@routes.route("/irrigation/history/list")
+@login_required
+def history_list():
+    db = get_db()
+    rows = db.execute("""
+        SELECT sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
+        LIMIT 20
+    """).fetchall()
+
+    history = []
+    for row in rows:
+        history.append({
+            "sector": row[0],
+            "start_time": row[1],
+            "end_time": row[2],
+            "type": row[3]
+        })
+
+    return jsonify(history)
+
+# Emergency stop - turn off all zones
+@routes.route("/irrigation/emergency-stop", methods=["POST"])
+@login_required
+def emergency_stop():
+    try:
+        from app.hardware import all_off
+
+        all_off()
+
+        # Update database - close all open irrigation logs
+        db = get_db()
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time = ?
+            WHERE end_time IS NULL
+        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+        db.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "All zones stopped"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 # Activar / desactivar riego manual
 @routes.route("/irrigation/manual", methods=["POST"])

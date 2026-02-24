@@ -1,63 +1,115 @@
 {% extends "base.html" %}
-{% block title %}Riego{% endblock %}
+{% block title %}Sistema de Riego{% endblock %}
 
 {% block content %}
 
-<h2>💧 Riego</h2>
-
-<div class="card">
-  <h3>Programar riego</h3>
-
-  <select id="sector">
-    <option value="1">Sector 1</option>
-    <option value="2">Sector 2</option>
-    <option value="3">Sector 3</option>
-  </select>
-
-  <input type="date" id="date">
-  <input type="time" id="time">
-  <input type="time" id="end_time">
-
-  <button onclick="createSchedule()">Guardar</button>
+<div class="irrigation-header">
+  <h2>💧 Sistema de Riego Inteligente</h2>
+  <div class="system-status">
+    <span class="status-indicator" id="systemStatus">
+      <i class="status-dot"></i> Sistema Activo
+    </span>
+    <span class="last-update" id="lastUpdate">Actualizando...</span>
+  </div>
 </div>
 
-<div class="card">
-  <h3>Riegos programados</h3>
-  <div id="scheduleList"></div>
+<!-- Control Manual de Zonas -->
+<div class="card card-zones">
+  <div class="card-header">
+    <h3>🎛️ Control Manual de Zonas</h3>
+    <button class="btn-emergency" onclick="emergencyStop()">
+      <span class="btn-icon">⚠️</span> Detener Todo
+    </button>
+  </div>
+  <div class="zones-grid" id="zonesGrid">
+    <!-- Zones will be loaded dynamically -->
+  </div>
 </div>
 
-<div class="card">
-  <h3>Riego manual</h3>
+<!-- Programación de Riego -->
+<div class="card card-schedule">
+  <div class="card-header">
+    <h3>📅 Programar Nuevo Riego</h3>
+  </div>
+  <div class="schedule-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label for="sector">
+          <i class="icon">🌱</i> Sector
+        </label>
+        <select id="sector" class="form-control">
+          <option value="1">Sector 1 - Jardín Principal</option>
+          <option value="2">Sector 2 - Huerta</option>
+          <option value="3">Sector 3 - Césped</option>
+          <option value="4">Sector 4 - Árboles</option>
+        </select>
+      </div>
 
-  <button onclick="manual(1)">Sector 1</button>
-  <button onclick="manual(2)">Sector 2</button>
-  <button onclick="manual(3)">Sector 3</button>
+      <div class="form-group">
+        <label for="date">
+          <i class="icon">📆</i> Fecha
+        </label>
+        <input type="date" id="date" class="form-control" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="time">
+          <i class="icon">⏰</i> Hora de Inicio
+        </label>
+        <input type="time" id="time" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label for="end_time">
+          <i class="icon">⏱️</i> Hora de Fin
+        </label>
+        <input type="time" id="end_time" class="form-control" required>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="createSchedule()">
+        <span class="btn-icon">✓</span> Programar Riego
+      </button>
+      <button class="btn btn-secondary" onclick="clearForm()">
+        <span class="btn-icon">✕</span> Limpiar
+      </button>
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <h3>Historial</h3>
+<!-- Riegos Programados -->
+<div class="card card-scheduled">
+  <div class="card-header">
+    <h3>📋 Riegos Programados</h3>
+    <span class="badge" id="scheduledCount">0</span>
+  </div>
+  <div id="scheduleList" class="schedule-list">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando programación...</p>
+    </div>
+  </div>
+</div>
 
-  {% if history %}
-  <table>
-    <tr>
-      <th>Sector</th>
-      <th>Inicio</th>
-      <th>Fin</th>
-      <th>Tipo</th>
-    </tr>
-
-    {% for h in history %}
-    <tr>
-      <td>{{ h[0] }}</td>
-      <td>{{ h[1] }}</td>
-      <td>{{ h[2] or "-" }}</td>
-      <td>{{ h[3] }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-    <p>No hay historial.</p>
-  {% endif %}
+<!-- Historial de Riegos -->
+<div class="card card-history">
+  <div class="card-header">
+    <h3>📊 Historial de Riegos</h3>
+    <div class="history-filters">
+      <button class="filter-btn active" onclick="filterHistory('all')">Todos</button>
+      <button class="filter-btn" onclick="filterHistory('manual')">Manual</button>
+      <button class="filter-btn" onclick="filterHistory('scheduled')">Programado</button>
+    </div>
+  </div>
+  <div id="historyList" class="history-list">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Cargando historial...</p>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
