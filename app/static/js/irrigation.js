@@ -45,6 +45,16 @@ function startAutoUpdate() {
     }, 3000); // Update every 3 seconds
 }
 
+// Update last update time display
+function updateLastUpdateTime() {
+    const lastUpdateEl = document.getElementById('lastUpdate');
+    if (lastUpdateEl) {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('es-ES');
+        lastUpdateEl.textContent = `Última actualización: ${timeString}`;
+    }
+}
+
 // ...existing code...
 
 // ========================================
