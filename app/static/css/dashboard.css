@@ -348,11 +348,61 @@
   opacity: 0.6;
 }
 
-/* Gauges Grid */
-.gauges-grid {
+/* Gauges Grid Compact */
+.gauges-grid-compact {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.gauge-card.compact {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.gauge-card.compact:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.gauge-header-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.gauge-title-compact {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.gauge-container-compact {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-footer-compact {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 2px solid #f3f4f6;
+  font-size: 0.65rem;
+  color: #6b7280;
+}
+
+.gauge-footer-compact .limit-critical {
+  color: #dc2626;
+  font-weight: 600;
+  display: block;
 }
 
 .gauge-card {
@@ -618,4 +668,5 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
 

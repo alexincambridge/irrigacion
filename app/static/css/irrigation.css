@@ -394,6 +394,28 @@
   }
 }
 
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .schedule-item:hover {
   transform: translateX(5px);
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
@@ -708,4 +730,5 @@
   font-weight: 500;
   color: #1f2937;
 }
+
 

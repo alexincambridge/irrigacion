@@ -87,60 +87,83 @@
     </div>
   </div>
 
-  <div class="gauges-grid">
-    <div class="gauge-card">
-      <div class="gauge-header">
-        <span class="gauge-title">🌡️ Temperatura</span>
+  <div class="gauges-grid-compact">
+    <!-- Row 1: Environmental Sensors -->
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">🌡️ Temperatura</span>
         <span class="gauge-status-badge" id="tempStatus">NORMAL</span>
       </div>
-      <div id="tempGauge" class="gauge-container"></div>
-      <div class="gauge-footer">
-        <div class="gauge-limits">
-          <span class="limit-critical">Crítico: &lt;5°C o &gt;40°C</span>
-          <span class="limit-warning">Alerta: &lt;10°C o &gt;35°C</span>
-        </div>
+      <div id="tempGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;5°C o &gt;40°C</span>
       </div>
     </div>
 
-    <div class="gauge-card">
-      <div class="gauge-header">
-        <span class="gauge-title">💧 Humedad</span>
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">💧 Humedad</span>
         <span class="gauge-status-badge" id="humStatus">NORMAL</span>
       </div>
-      <div id="humGauge" class="gauge-container"></div>
-      <div class="gauge-footer">
-        <div class="gauge-limits">
-          <span class="limit-critical">Crítico: &lt;20% o &gt;90%</span>
-          <span class="limit-warning">Alerta: &lt;30% o &gt;80%</span>
-        </div>
+      <div id="humGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;20% o &gt;90%</span>
       </div>
     </div>
 
-    <div class="gauge-card">
-      <div class="gauge-header">
-        <span class="gauge-title">🔘 Presión Atmosférica</span>
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">🔘 Presión Aire</span>
         <span class="gauge-status-badge" id="pressureStatus">NORMAL</span>
       </div>
-      <div id="pressureGauge" class="gauge-container"></div>
-      <div class="gauge-footer">
-        <div class="gauge-limits">
-          <span class="limit-critical">Crítico: &lt;980 o &gt;1040 hPa</span>
-          <span class="limit-warning">Alerta: &lt;990 o &gt;1030 hPa</span>
-        </div>
+      <div id="pressureGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;980 o &gt;1040 hPa</span>
       </div>
     </div>
 
-    <div class="gauge-card">
-      <div class="gauge-header">
-        <span class="gauge-title">☀️ Radiación Solar</span>
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">☀️ Radiación Solar</span>
         <span class="gauge-status-badge" id="solarStatus">NORMAL</span>
       </div>
-      <div id="solarGauge" class="gauge-container"></div>
-      <div class="gauge-footer">
-        <div class="gauge-limits">
-          <span class="limit-warning">Alerta: &gt;800 W/m²</span>
-          <span class="limit-critical">Crítico: &gt;1000 W/m²</span>
-        </div>
+      <div id="solarGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &gt;1000 W/m²</span>
+      </div>
+    </div>
+
+    <!-- Row 2: Water Quality Sensors -->
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">💧 Presión Agua</span>
+        <span class="gauge-status-badge" id="waterPressureStatus">NORMAL</span>
+      </div>
+      <div id="waterPressureGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;0.5 o &gt;6 bar</span>
+      </div>
+    </div>
+
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">🧪 pH Agua</span>
+        <span class="gauge-status-badge" id="phStatus">NORMAL</span>
+      </div>
+      <div id="phGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;5.5 o &gt;8.5</span>
+      </div>
+    </div>
+
+    <div class="gauge-card compact">
+      <div class="gauge-header-compact">
+        <span class="gauge-title-compact">⚡ EC Agua</span>
+        <span class="gauge-status-badge" id="ecStatus">NORMAL</span>
+      </div>
+      <div id="ecGauge" class="gauge-container-compact"></div>
+      <div class="gauge-footer-compact">
+        <span class="limit-critical">Crítico: &lt;0.5 o &gt;2.5 mS</span>
       </div>
     </div>
   </div>

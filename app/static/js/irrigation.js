@@ -1,6 +1,6 @@
 // ========================================
 // IRRIGATION SYSTEM - PROFESSIONAL JS
-// Real-time updates with AJAX
+// Smooth real-time updates without flashing
 // ========================================
 
 // State management
@@ -35,25 +35,467 @@ function setDefaultDate() {
     }
 }
 
-// Start auto-update every 5 seconds
+// Start auto-update every 3 seconds (faster for smooth updates)
 function startAutoUpdate() {
     updateInterval = setInterval(() => {
         loadZones();
-        loadSchedules();
-        loadHistory();
+        updateSchedules();  // Changed: incremental update instead of reload
+        updateHistory();    // Changed: incremental update instead of reload
         updateLastUpdateTime();
-    }, 5000); // Update every 5 seconds
+    }, 3000); // Update every 3 seconds
 }
 
-// Update last update time display
-function updateLastUpdateTime() {
-    const lastUpdateEl = document.getElementById('lastUpdate');
-    if (lastUpdateEl) {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('es-ES');
-        lastUpdateEl.textContent = `Última actualización: ${timeString}`;
+// ...existing code...
+
+// ========================================
+// SCHEDULE MANAGEMENT - OPTIMIZED
+// ========================================
+
+async function createSchedule() {
+    // ...existing code...
+}
+
+async function loadSchedules() {
+    try {
+        const response = await fetch("/irrigation/schedule/list");
+        const data = await response.json();
+
+        schedulesData = data;
+        renderSchedules(data);
+    } catch (error) {
+        console.error("Error loading schedules:", error);
     }
 }
+
+// NEW: Incremental schedule update - no flashing!
+async function updateSchedules() {
+    try {
+        const response = await fetch("/irrigation/schedule/list");
+        const newData = await response.json();
+
+        // Check if data actually changed
+        if (JSON.stringify(newData) === JSON.stringify(schedulesData)) {
+            return; // No changes, don't re-render
+        }
+
+        // Remove items that are no longer in the new data (vencidos)
+        const oldIds = schedulesData.map(s => s.id);
+        const newIds = newData.map(s => s.id);
+
+        oldIds.forEach(id => {
+            if (!newIds.includes(id)) {
+                const element = document.querySelector(`[data-schedule-id="${id}"]`);
+                if (element) {
+                    // Smooth removal animation
+                    element.style.animation = 'slideOut 0.3s ease forwards';
+                    setTimeout(() => element.remove(), 300);
+                }
+            }
+        });
+
+        // Add new items with animation
+        newData.forEach(schedule => {
+            const oldSchedule = schedulesData.find(s => s.id === schedule.id);
+            if (!oldSchedule) {
+                // New item - add it
+                insertScheduleItem(schedule);
+            }
+        });
+
+        schedulesData = newData;
+
+        // Update count badge
+        const countBadge = document.getElementById("scheduledCount");
+        if (countBadge) {
+            countBadge.textContent = newData.length;
+        }
+
+    } catch (error) {
+        console.error("Error updating schedules:", error);
+    }
+}
+
+function insertScheduleItem(schedule) {
+    const container = document.getElementById("scheduleList");
+    if (!container) return;
+
+    // Check if empty state exists
+    const emptyState = container.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    const sectorNames = {
+        1: 'Jardín Principal',
+        2: 'Huerta',
+        3: 'Césped',
+        4: 'Árboles'
+    };
+
+    const html = `
+        <div class="schedule-item" data-schedule-id="${schedule.id}">
+            <div class="schedule-info">
+                <div class="schedule-detail">
+                    <div class="schedule-label">Sector</div>
+                    <div class="schedule-value">
+                        ${schedule.sector} - ${sectorNames[schedule.sector] || 'Sector ' + schedule.sector}
+                    </div>
+                </div>
+
+                <div class="schedule-detail">
+                    <div class="schedule-label">Fecha</div>
+                    <div class="schedule-value">${formatDate(schedule.date)}</div>
+                </div>
+
+                <div class="schedule-detail">
+                    <div class="schedule-label">Horario</div>
+                    <div class="schedule-value">${schedule.start_time} - ${schedule.end_time}</div>
+                </div>
+
+                <div class="schedule-detail">
+                    <div class="schedule-label">Duración</div>
+                    <div class="schedule-value">${calculateDuration(schedule.start_time, schedule.end_time)}</div>
+                </div>
+            </div>
+
+            <div class="schedule-actions">
+                <button class="btn-delete" onclick="deleteSchedule(${schedule.id})">
+                    ✕ Cancelar
+                </button>
+            </div>
+        </div>
+    `;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const element = temp.firstElementChild;
+    element.style.animation = 'slideIn 0.4s ease';
+
+    container.appendChild(element);
+}
+
+function renderSchedules(schedules) {
+    const container = document.getElementById("scheduleList");
+    const countBadge = document.getElementById("scheduledCount");
+
+    if (!container) return;
+
+    if (countBadge) {
+        countBadge.textContent = schedules.length;
+    }
+
+    if (schedules.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📅</div>
+                <p class="empty-state-text">No hay riegos programados</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+
+    schedules.forEach(schedule => {
+        const sectorNames = {
+            1: 'Jardín Principal',
+            2: 'Huerta',
+            3: 'Césped',
+            4: 'Árboles'
+        };
+
+        html += `
+            <div class="schedule-item" data-schedule-id="${schedule.id}">
+                <div class="schedule-info">
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Sector</div>
+                        <div class="schedule-value">
+                            ${schedule.sector} - ${sectorNames[schedule.sector] || 'Sector ' + schedule.sector}
+                        </div>
+                    </div>
+
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Fecha</div>
+                        <div class="schedule-value">${formatDate(schedule.date)}</div>
+                    </div>
+
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Horario</div>
+                        <div class="schedule-value">${schedule.start_time} - ${schedule.end_time}</div>
+                    </div>
+
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Duración</div>
+                        <div class="schedule-value">${calculateDuration(schedule.start_time, schedule.end_time)}</div>
+                    </div>
+                </div>
+
+                <div class="schedule-actions">
+                    <button class="btn-delete" onclick="deleteSchedule(${schedule.id})">
+                        ✕ Cancelar
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+async function deleteSchedule(id) {
+    if (!confirm('¿Cancelar este riego programado?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/irrigation/schedule/delete/${id}`, {
+            method: "DELETE"
+        });
+
+        if (response.ok) {
+            showToast("Riego cancelado", 'success');
+            // Smooth removal
+            const element = document.querySelector(`[data-schedule-id="${id}"]`);
+            if (element) {
+                element.style.animation = 'slideOut 0.3s ease forwards';
+                setTimeout(() => {
+                    element.remove();
+                    // Update count
+                    schedulesData = schedulesData.filter(s => s.id !== id);
+                    const countBadge = document.getElementById("scheduledCount");
+                    if (countBadge) {
+                        countBadge.textContent = schedulesData.length;
+                    }
+                    if (schedulesData.length === 0) {
+                        document.getElementById("scheduleList").innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📅</div>
+                                <p class="empty-state-text">No hay riegos programados</p>
+                            </div>
+                        `;
+                    }
+                }, 300);
+            }
+        } else {
+            showToast("Error al cancelar riego", 'error');
+        }
+    } catch (error) {
+        console.error("Error deleting schedule:", error);
+        showToast("Error de conexión", 'error');
+    }
+}
+
+// ...existing code for clearForm...
+
+// ========================================
+// HISTORY MANAGEMENT - OPTIMIZED
+// ========================================
+
+async function loadHistory() {
+    try {
+        const response = await fetch("/irrigation/history/list");
+        const data = await response.json();
+
+        historyData = data;
+        renderHistory(data);
+    } catch (error) {
+        console.error("Error loading history:", error);
+    }
+}
+
+// NEW: Incremental history update - no flashing!
+async function updateHistory() {
+    try {
+        const response = await fetch("/irrigation/history/list");
+        const newData = await response.json();
+
+        // Check if data actually changed (by comparing length and first item)
+        if (newData.length === historyData.length &&
+            newData[0] && historyData[0] &&
+            newData[0].start_time === historyData[0].start_time) {
+            return; // No changes, don't re-render
+        }
+
+        // Find new items
+        newData.forEach((newRecord, index) => {
+            const oldRecord = historyData[index];
+
+            // If it's a new item at the top (EN CURSO → FINALIZADO)
+            if (!oldRecord || newRecord.start_time !== oldRecord.start_time) {
+                insertHistoryItem(newRecord, true); // Insert at top
+            }
+        });
+
+        historyData = newData;
+        applyCurrentFilter();
+
+    } catch (error) {
+        console.error("Error updating history:", error);
+    }
+}
+
+function insertHistoryItem(record, atTop = true) {
+    const container = document.getElementById("historyList");
+    if (!container) return;
+
+    // Remove empty state if exists
+    const emptyState = container.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    const sectorNames = {
+        1: 'Jardín Principal',
+        2: 'Huerta',
+        3: 'Césped',
+        4: 'Árboles'
+    };
+
+    const icon = record.type === 'manual' ? '👤' : '📅';
+    const typeText = record.type === 'manual' ? 'Manual' : 'Programado';
+
+    const html = `
+        <div class="history-item ${record.type}" data-history-start="${record.start_time}">
+            <div class="history-icon">${icon}</div>
+
+            <div class="history-content">
+                <div class="history-field">
+                    <div class="history-field-label">Sector</div>
+                    <div class="history-field-value">
+                        ${record.sector} - ${sectorNames[record.sector] || 'Sector ' + record.sector}
+                    </div>
+                </div>
+
+                <div class="history-field">
+                    <div class="history-field-label">Inicio</div>
+                    <div class="history-field-value">${formatDateTime(record.start_time)}</div>
+                </div>
+
+                <div class="history-field">
+                    <div class="history-field-label">Fin</div>
+                    <div class="history-field-value">${record.end_time ? formatDateTime(record.end_time) : 'En curso...'}</div>
+                </div>
+
+                <div class="history-field">
+                    <div class="history-field-label">Tipo</div>
+                    <div class="history-field-value">${typeText}</div>
+                </div>
+
+                ${record.end_time ? `
+                    <div class="history-field">
+                        <div class="history-field-label">Duración</div>
+                        <div class="history-field-value">${calculateTimeDiff(record.start_time, record.end_time)}</div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const element = temp.firstElementChild;
+    element.style.animation = 'fadeIn 0.5s ease';
+
+    if (atTop && container.firstChild) {
+        container.insertBefore(element, container.firstChild);
+    } else {
+        container.appendChild(element);
+    }
+}
+
+function renderHistory(history) {
+    const container = document.getElementById("historyList");
+    if (!container) return;
+
+    const filteredHistory = currentFilter === 'all'
+        ? history
+        : history.filter(h => h.type === currentFilter);
+
+    if (filteredHistory.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <p class="empty-state-text">No hay registros en el historial</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+
+    filteredHistory.forEach(record => {
+        const sectorNames = {
+            1: 'Jardín Principal',
+            2: 'Huerta',
+            3: 'Césped',
+            4: 'Árboles'
+        };
+
+        const icon = record.type === 'manual' ? '👤' : '📅';
+        const typeText = record.type === 'manual' ? 'Manual' : 'Programado';
+
+        html += `
+            <div class="history-item ${record.type}" data-history-start="${record.start_time}">
+                <div class="history-icon">${icon}</div>
+
+                <div class="history-content">
+                    <div class="history-field">
+                        <div class="history-field-label">Sector</div>
+                        <div class="history-field-value">
+                            ${record.sector} - ${sectorNames[record.sector] || 'Sector ' + record.sector}
+                        </div>
+                    </div>
+
+                    <div class="history-field">
+                        <div class="history-field-label">Inicio</div>
+                        <div class="history-field-value">${formatDateTime(record.start_time)}</div>
+                    </div>
+
+                    <div class="history-field">
+                        <div class="history-field-label">Fin</div>
+                        <div class="history-field-value">${record.end_time ? formatDateTime(record.end_time) : 'En curso...'}</div>
+                    </div>
+
+                    <div class="history-field">
+                        <div class="history-field-label">Tipo</div>
+                        <div class="history-field-value">${typeText}</div>
+                    </div>
+
+                    ${record.end_time ? `
+                        <div class="history-field">
+                            <div class="history-field-label">Duración</div>
+                            <div class="history-field-value">${calculateTimeDiff(record.start_time, record.end_time)}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function filterHistory(filter) {
+    currentFilter = filter;
+
+    // Update button states
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    applyCurrentFilter();
+}
+
+function applyCurrentFilter() {
+    const filteredHistory = currentFilter === 'all'
+        ? historyData
+        : historyData.filter(h => h.type === currentFilter);
+
+    renderHistory(filteredHistory);
+}
+
+// ...existing utility functions stay the same...
 
 // ========================================
 // ZONES MANAGEMENT

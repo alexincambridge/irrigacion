@@ -10,7 +10,10 @@ let dailyStats = {
   temperature: { min: null, max: null, values: [] },
   humidity: { min: null, max: null, values: [] },
   pressure: { min: null, max: null, values: [] },
-  solar: { min: null, max: null, values: [] }
+  solar: { min: null, max: null, values: [] },
+  waterPressure: { min: null, max: null, values: [] },
+  ph: { min: null, max: null, values: [] },
+  ec: { min: null, max: null, values: [] }
 };
 
 let gauges = {};
@@ -37,6 +40,21 @@ const thresholds = {
   solar: {
     warning: { max: 800 },
     critical: { max: 1000 }
+  },
+  waterPressure: {
+    critical: { min: 0.5, max: 6 },
+    warning: { min: 1, max: 5 },
+    normal: { min: 1.5, max: 4 }
+  },
+  ph: {
+    critical: { min: 5.5, max: 8.5 },
+    warning: { min: 6, max: 8 },
+    normal: { min: 6.5, max: 7.5 }
+  },
+  ec: {
+    critical: { min: 0.5, max: 2.5 },
+    warning: { min: 0.8, max: 2 },
+    normal: { min: 1, max: 1.8 }
   }
 };
 
@@ -68,7 +86,8 @@ function initializeGauges() {
     min: 0,
     max: 50,
     unit: '°C',
-    type: 'temperature'
+    type: 'temperature',
+    height: 120
   });
 
   // Humidity Gauge (0-100%)
@@ -76,7 +95,8 @@ function initializeGauges() {
     min: 0,
     max: 100,
     unit: '%',
-    type: 'humidity'
+    type: 'humidity',
+    height: 120
   });
 
   // Pressure Gauge (950-1050 hPa)
@@ -84,7 +104,8 @@ function initializeGauges() {
     min: 950,
     max: 1050,
     unit: 'hPa',
-    type: 'pressure'
+    type: 'pressure',
+    height: 120
   });
 
   // Solar Gauge (0-1200 W/m²)
@@ -92,7 +113,35 @@ function initializeGauges() {
     min: 0,
     max: 1200,
     unit: 'W/m²',
-    type: 'solar'
+    type: 'solar',
+    height: 120
+  });
+
+  // Water Pressure Gauge (0-8 bar)
+  gauges.waterPressure = createGauge('waterPressureGauge', {
+    min: 0,
+    max: 8,
+    unit: 'bar',
+    type: 'waterPressure',
+    height: 120
+  });
+
+  // pH Gauge (0-14)
+  gauges.ph = createGauge('phGauge', {
+    min: 0,
+    max: 14,
+    unit: 'pH',
+    type: 'ph',
+    height: 120
+  });
+
+  // EC Gauge (0-4 mS)
+  gauges.ec = createGauge('ecGauge', {
+    min: 0,
+    max: 4,
+    unit: 'mS',
+    type: 'ec',
+    height: 120
   });
 
   console.log("✓ Gauges initialized");
@@ -105,7 +154,7 @@ function createGauge(elementId, config) {
   const options = {
     chart: {
       type: 'radialBar',
-      height: 280,
+      height: config.height || 280,
       animations: {
         enabled: true,
         easing: 'easeinout',
@@ -129,18 +178,18 @@ function createGauge(elementId, config) {
         },
         dataLabels: {
           name: {
-            fontSize: '14px',
+            fontSize: config.height === 120 ? '11px' : '14px',
             color: '#6b7280',
-            offsetY: -10
+            offsetY: -5
           },
           value: {
-            fontSize: '32px',
+            fontSize: config.height === 120 ? '20px' : '32px',
             fontWeight: 700,
             color: '#1f2937',
-            offsetY: 5,
+            offsetY: 2,
             formatter: function(val) {
               const actual = (val / 100) * (config.max - config.min) + config.min;
-              return actual.toFixed(1);
+              return actual.toFixed(config.type === 'ec' || config.type === 'ph' ? 1 : 1);
             }
           }
         }
@@ -267,6 +316,9 @@ async function refresh() {
     updateHumidity(data.dht_humidity || data.humidity);
     updatePressure(data.pressure);
     updateSolar(data.solar);
+    updateWaterPressure(data.water_pressure);
+    updatePH(data.ph);
+    updateEC(data.ec);
 
     // Update system status
     updateSystemStatus();
@@ -467,6 +519,51 @@ function updateTrend(elementId, values) {
     element.textContent = '↘';
     element.style.color = '#3b82f6';
   }
+}
+
+function updateWaterPressure(value) {
+  if (value === null || value === undefined) return;
+
+  const numValue = Number(value);
+  updateDailyStats('waterPressure', numValue);
+
+  // Update gauge
+  const percentage = ((numValue - 0) / (8 - 0)) * 100;
+  const criticality = getCriticality('waterPressure', numValue);
+  updateGauge('waterPressure', percentage, criticality);
+
+  // Update status badge
+  updateStatusBadge('waterPressureStatus', criticality);
+}
+
+function updatePH(value) {
+  if (value === null || value === undefined) return;
+
+  const numValue = Number(value);
+  updateDailyStats('ph', numValue);
+
+  // Update gauge
+  const percentage = ((numValue - 0) / (14 - 0)) * 100;
+  const criticality = getCriticality('ph', numValue);
+  updateGauge('ph', percentage, criticality);
+
+  // Update status badge
+  updateStatusBadge('phStatus', criticality);
+}
+
+function updateEC(value) {
+  if (value === null || value === undefined) return;
+
+  const numValue = Number(value);
+  updateDailyStats('ec', numValue);
+
+  // Update gauge
+  const percentage = ((numValue - 0) / (4 - 0)) * 100;
+  const criticality = getCriticality('ec', numValue);
+  updateGauge('ec', percentage, criticality);
+
+  // Update status badge
+  updateStatusBadge('ecStatus', criticality);
 }
 
 function updateStatusBadge(elementId, criticality) {
