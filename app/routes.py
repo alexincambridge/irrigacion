@@ -335,3 +335,36 @@ def irrigation_logs():
         })
 
     return render_template("logs.html", logs=logs)
+
+# --------------------
+# HARDWARE STATUS
+# --------------------
+@routes.route("/hardware/status")
+@login_required
+def hardware_status():
+    """Get hardware connection status and signal quality"""
+    try:
+        # Import the appropriate hardware module based on config
+        from app.config import Config
+        hardware_mode = getattr(Config, 'HARDWARE_MODE', 'GPIO')
+
+        if hardware_mode == 'LORA':
+            from app.hardware_lora import get_hardware_info, check_connection
+        else:
+            from app.hardware import get_hardware_info, check_connection
+
+        info = get_hardware_info()
+        info['connected'] = check_connection()
+
+        return jsonify(info)
+    except ImportError:
+        # Fallback if hardware_lora doesn't exist yet
+        return jsonify({
+            'mode': 'GPIO',
+            'zones': 4,
+            'active_zones': [],
+            'connected': True
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+

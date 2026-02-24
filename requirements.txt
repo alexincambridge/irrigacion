@@ -2,3 +2,8 @@ flask
 flask-login
 adafruit-circuitpython-dht
 RPi.GPIO
+
+# LoRa Communication (for ESP32 control)
+pyLoRa>=0.4.0
+spidev>=3.5
+
