@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/irrigation.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 </head>
 
 <body>
@@ -32,8 +33,31 @@
     </aside>
 
     <main>
-      <div id="datetime"></div>
-      {% block content %}{% endblock %}
+      <header class="main-header">
+        <div class="header-left">
+          <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+          <div class="breadcrumb">
+            <span class="breadcrumb-icon">🏠</span>
+            <span>{% block breadcrumb %}Inicio{% endblock %}</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="datetime-display" id="datetime"></div>
+          <div class="user-profile">
+            <div class="user-avatar">
+              <span class="user-icon">👤</span>
+            </div>
+            <div class="user-info">
+              <div class="user-name">{{ current_user.username }}</div>
+              <div class="user-role">Administrador</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="main-content">
+        {% block content %}{% endblock %}
+      </div>
     </main>
 
   </div>

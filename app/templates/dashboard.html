@@ -1,40 +1,203 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard Industrial{% endblock %}
+{% block page_title %}Centro de Control{% endblock %}
+{% block breadcrumb %}Dashboard / Monitoreo en Tiempo Real{% endblock %}
 
 {% block content %}
 
-<div class="header-bar">
-  <h2>🌱 Sistema de Irrigación  Automatico</h2>
-</div>
-
-<div class="grid-4">
-  <div class="kpi">
-    <div class="metric" id="kpiTemp">--</div>
-    <small>Temperatura (°C)</small>
-  </div>
-  <div class="kpi">
-    <div class="metric" id="kpiHum">--</div>
-    <small>Humedad (%)</small>
-  </div>
-  <div class="kpi">
-    <div class="metric" id="kpiSolar">--</div>
-    <small>Radiación solar</small>
-  </div>
-  <div class="kpi">
-    <div class="metric" id="kpiWater">--</div>
-    <small>Agua total (L)</small>
+<!-- Sistema de Alertas -->
+<div class="alert-banner" id="alertBanner" style="display: none;">
+  <div class="alert-content">
+    <span class="alert-icon">⚠️</span>
+    <span class="alert-message" id="alertMessage"></span>
+    <button class="alert-close" onclick="closeAlert()">✕</button>
   </div>
 </div>
 
-<div class="grid-3">
-  <div class="card"><div id="tempGauge"></div></div>
-  <div class="card"><div id="humGauge"></div></div>
-  <div class="card"><div id="solarGauge"></div></div>
+<!-- KPIs Principales -->
+<div class="dashboard-section">
+  <div class="section-header">
+    <h3>📊 Indicadores en Tiempo Real</h3>
+    <span class="update-indicator" id="updateIndicator">
+      <span class="pulse-dot"></span> Actualizando...
+    </span>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card temp">
+      <div class="kpi-icon">🌡️</div>
+      <div class="kpi-content">
+        <div class="kpi-value" id="kpiTemp">--</div>
+        <div class="kpi-label">Temperatura</div>
+        <div class="kpi-range">
+          <span class="range-min" id="tempMin">Min: --</span>
+          <span class="range-max" id="tempMax">Max: --</span>
+        </div>
+      </div>
+      <div class="kpi-trend" id="tempTrend"></div>
+    </div>
+
+    <div class="kpi-card humidity">
+      <div class="kpi-icon">💧</div>
+      <div class="kpi-content">
+        <div class="kpi-value" id="kpiHum">--</div>
+        <div class="kpi-label">Humedad</div>
+        <div class="kpi-range">
+          <span class="range-min" id="humMin">Min: --</span>
+          <span class="range-max" id="humMax">Max: --</span>
+        </div>
+      </div>
+      <div class="kpi-trend" id="humTrend"></div>
+    </div>
+
+    <div class="kpi-card pressure">
+      <div class="kpi-icon">🔘</div>
+      <div class="kpi-content">
+        <div class="kpi-value" id="kpiPressure">--</div>
+        <div class="kpi-label">Presión</div>
+        <div class="kpi-range">
+          <span class="range-min" id="pressureMin">Min: --</span>
+          <span class="range-max" id="pressureMax">Max: --</span>
+        </div>
+      </div>
+      <div class="kpi-trend" id="pressureTrend"></div>
+    </div>
+
+    <div class="kpi-card solar">
+      <div class="kpi-icon">☀️</div>
+      <div class="kpi-content">
+        <div class="kpi-value" id="kpiSolar">--</div>
+        <div class="kpi-label">Radiación Solar</div>
+        <div class="kpi-range">
+          <span class="range-min" id="solarMin">Min: --</span>
+          <span class="range-max" id="solarMax">Max: --</span>
+        </div>
+      </div>
+      <div class="kpi-trend" id="solarTrend"></div>
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <h3>Histórico sensores</h3>
-  <div id="historyChart"></div>
+<!-- Gauges Industriales -->
+<div class="dashboard-section">
+  <div class="section-header">
+    <h3>⚙️ Monitores Industriales</h3>
+    <div class="gauge-controls">
+      <span class="gauge-status">Estado: <strong id="gaugeStatus">Normal</strong></span>
+    </div>
+  </div>
+
+  <div class="gauges-grid">
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <span class="gauge-title">🌡️ Temperatura</span>
+        <span class="gauge-status-badge" id="tempStatus">NORMAL</span>
+      </div>
+      <div id="tempGauge" class="gauge-container"></div>
+      <div class="gauge-footer">
+        <div class="gauge-limits">
+          <span class="limit-critical">Crítico: &lt;5°C o &gt;40°C</span>
+          <span class="limit-warning">Alerta: &lt;10°C o &gt;35°C</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <span class="gauge-title">💧 Humedad</span>
+        <span class="gauge-status-badge" id="humStatus">NORMAL</span>
+      </div>
+      <div id="humGauge" class="gauge-container"></div>
+      <div class="gauge-footer">
+        <div class="gauge-limits">
+          <span class="limit-critical">Crítico: &lt;20% o &gt;90%</span>
+          <span class="limit-warning">Alerta: &lt;30% o &gt;80%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <span class="gauge-title">🔘 Presión Atmosférica</span>
+        <span class="gauge-status-badge" id="pressureStatus">NORMAL</span>
+      </div>
+      <div id="pressureGauge" class="gauge-container"></div>
+      <div class="gauge-footer">
+        <div class="gauge-limits">
+          <span class="limit-critical">Crítico: &lt;980 o &gt;1040 hPa</span>
+          <span class="limit-warning">Alerta: &lt;990 o &gt;1030 hPa</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="gauge-card">
+      <div class="gauge-header">
+        <span class="gauge-title">☀️ Radiación Solar</span>
+        <span class="gauge-status-badge" id="solarStatus">NORMAL</span>
+      </div>
+      <div id="solarGauge" class="gauge-container"></div>
+      <div class="gauge-footer">
+        <div class="gauge-limits">
+          <span class="limit-warning">Alerta: &gt;800 W/m²</span>
+          <span class="limit-critical">Crítico: &gt;1000 W/m²</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráfico Histórico -->
+<div class="dashboard-section">
+  <div class="section-header">
+    <h3>📈 Histórico de Sensores (24h)</h3>
+    <div class="chart-controls">
+      <button class="chart-btn active" onclick="toggleSensor('temp')">Temperatura</button>
+      <button class="chart-btn active" onclick="toggleSensor('humidity')">Humedad</button>
+      <button class="chart-btn active" onclick="toggleSensor('pressure')">Presión</button>
+      <button class="chart-btn active" onclick="toggleSensor('solar')">Solar</button>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div id="historyChart"></div>
+  </div>
+</div>
+
+<!-- Estado del Sistema -->
+<div class="dashboard-section">
+  <div class="system-status-grid">
+    <div class="status-card">
+      <div class="status-icon status-ok">✓</div>
+      <div class="status-content">
+        <div class="status-title">Sistema</div>
+        <div class="status-value">Operativo</div>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon status-ok">📡</div>
+      <div class="status-content">
+        <div class="status-title">Sensores</div>
+        <div class="status-value" id="sensorStatus">4 Activos</div>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon status-ok">💾</div>
+      <div class="status-content">
+        <div class="status-title">Base de Datos</div>
+        <div class="status-value">Conectada</div>
+      </div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-icon status-ok">⏱️</div>
+      <div class="status-content">
+        <div class="status-title">Última Lectura</div>
+        <div class="status-value" id="lastReading">Hace 5s</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
