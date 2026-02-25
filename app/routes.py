@@ -220,7 +220,7 @@ def schedule_list():
         # Intentar obtener schedules con nuevos campos
         try:
             rows = db.execute("""
-                SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, 
+                SELECT id, sector, date, start_time, end_time, duration_minutes, priority, status, 
                        repeat_days, repeat_enabled, origin, enabled
                 FROM irrigation_schedule
                 WHERE enabled = 1
@@ -237,8 +237,8 @@ def schedule_list():
                     "start_time": r[3],
                     "end_time": r[4],
                     "duration_minutes": r[5],
-                    "status": r[6],
-                    "priority": r[7],
+                    "priority": r[6],
+                    "status": r[7],
                     "repeat_days": r[8],
                     "repeat_enabled": r[9],
                     "origin": r[10],
