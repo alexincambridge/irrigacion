@@ -151,68 +151,117 @@ def schedule_add():
 @routes.route("/irrigation/schedule/list")
 @login_required
 def schedule_list():
+    try:
+        db = get_db()
 
-    db = get_db()
+        # Primero, eliminar riegos que ya terminaron
+        from datetime import datetime
+        now = datetime.now()
+        current_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Primero, eliminar riegos que ya terminaron
-    from datetime import datetime
-    now = datetime.now()
-    current_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
+        # Intentar obtener riegos vencidos con nuevos campos
+        try:
+            vencidos = db.execute("""
+                SELECT id, sector, start_time, end_time, duration_minutes
+                FROM irrigation_schedule
+                WHERE enabled = 1
+                AND datetime(date || ' ' || end_time) <= ?
+            """, (current_datetime,)).fetchall()
 
-    # Obtener riegos vencidos
-    vencidos = db.execute("""
-        SELECT id, sector, start_time, end_time, duration_minutes
-        FROM irrigation_schedule
-        WHERE enabled = 1
-        AND datetime(date || ' ' || end_time) <= ?
-    """, (current_datetime,)).fetchall()
+            # Registrar en log y eliminar
+            for row in vencidos:
+                schedule_id = row[0]
+                sector = row[1]
+                start_time = row[2]
+                end_time = row[3]
+                duration_minutes = row[4] if len(row) > 4 else None
 
-    # Registrar en log y eliminar
-    for row in vencidos:
-        schedule_id = row[0]
-        sector = row[1]
-        start_time = row[2]
-        end_time = row[3]
+                # Registrar finalización en log si no está ya registrado
+                try:
+                    db.execute("""
+                        INSERT OR IGNORE INTO irrigation_log 
+                        (sector, start_time, end_time, type, scheduled_id, duration_minutes, status)
+                        VALUES (?, ?, ?, 'programado', ?, ?, 'completado')
+                    """, (sector, f"{now.strftime('%Y-%m-%d')} {start_time}",
+                          f"{now.strftime('%Y-%m-%d')} {end_time}", schedule_id, duration_minutes))
+                except:
+                    # Si falla, usar campos básicos
+                    db.execute("""
+                        INSERT OR IGNORE INTO irrigation_log (sector, start_time, end_time, type)
+                        VALUES (?, ?, ?, 'programado')
+                    """, (sector, f"{now.strftime('%Y-%m-%d')} {start_time}",
+                          f"{now.strftime('%Y-%m-%d')} {end_time}"))
 
-        # Registrar finalización en log si no está ya registrado
-        db.execute("""
-            INSERT OR IGNORE INTO irrigation_log (sector, start_time, end_time, type, scheduled_id)
-            VALUES (?, ?, ?, 'programado', ?)
-        """, (sector, f"{now.strftime('%Y-%m-%d')} {start_time}", f"{now.strftime('%Y-%m-%d')} {end_time}", schedule_id))
+                # Marcar como no activo
+                db.execute("""
+                    UPDATE irrigation_schedule
+                    SET enabled = 0
+                    WHERE id = ?
+                """, (schedule_id,))
 
-        # Marcar como no activo
-        db.execute("""
-            UPDATE irrigation_schedule
-            SET enabled = 0
-            WHERE id = ?
-        """, (schedule_id,))
+            db.commit()
+        except Exception as e:
+            print(f"Warning in vencidos check: {e}")
 
-    db.commit()
+        # Intentar obtener schedules con nuevos campos
+        try:
+            rows = db.execute("""
+                SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, enabled
+                FROM irrigation_schedule
+                WHERE enabled = 1
+                ORDER BY priority DESC, date ASC, start_time ASC
+                LIMIT 10
+            """).fetchall()
 
-    rows = db.execute("""
-        SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, enabled
-        FROM irrigation_schedule
-        WHERE enabled = 1
-        ORDER BY priority DESC, date ASC, start_time ASC
-        LIMIT 10
-    """).fetchall()
+            schedules = []
+            for r in rows:
+                schedules.append({
+                    "id": r[0],
+                    "sector": r[1],
+                    "date": r[2],
+                    "start_time": r[3],
+                    "end_time": r[4],
+                    "duration_minutes": r[5],
+                    "status": r[6],
+                    "priority": r[7],
+                    "enabled": r[8]
+                })
+        except Exception as e:
+            # Si falla, usar campos básicos
+            print(f"Warning: Using basic fields for schedule: {e}")
+            rows = db.execute("""
+                SELECT id, sector, date, start_time
+                FROM irrigation_schedule
+                WHERE enabled = 1
+                ORDER BY date ASC, start_time ASC
+                LIMIT 10
+            """).fetchall()
 
-    schedules = []
+            schedules = []
+            for r in rows:
+                # Calcular end_time como start_time + 30 min (default)
+                start_h, start_m = map(int, r[3].split(':'))
+                end_m = start_m + 30
+                end_h = start_h + (end_m // 60)
+                end_m = end_m % 60
+                end_time = f"{end_h:02d}:{end_m:02d}"
 
-    for r in rows:
-        schedules.append({
-            "id": r[0],
-            "sector": r[1],
-            "date": r[2],
-            "start_time": r[3],
-            "end_time": r[4],
-            "duration_minutes": r[5],
-            "status": r[6],
-            "priority": r[7],
-            "enabled": r[8]
-        })
+                schedules.append({
+                    "id": r[0],
+                    "sector": r[1],
+                    "date": r[2],
+                    "start_time": r[3],
+                    "end_time": end_time,
+                    "duration_minutes": 30,
+                    "status": "en espera",
+                    "priority": 0,
+                    "enabled": 1
+                })
 
-    return jsonify(schedules)
+        return jsonify(schedules)
+    except Exception as e:
+        print(f"Error in schedule_list: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @routes.route("/irrigation/schedule/delete/<int:schedule_id>", methods=["DELETE"])
 @login_required
@@ -336,28 +385,57 @@ def zones_status():
 @routes.route("/irrigation/history/list")
 @login_required
 def history_list():
-    db = get_db()
-    rows = db.execute("""
-        SELECT sector, start_time, end_time, type, duration_minutes, status, id, scheduled_id
-        FROM irrigation_log
-        ORDER BY id DESC
-        LIMIT 50
-    """).fetchall()
+    try:
+        db = get_db()
 
-    history = []
-    for row in rows:
-        history.append({
-            "id": row[6],
-            "sector": row[0],
-            "start_time": row[1],
-            "end_time": row[2],
-            "type": row[3],
-            "duration_minutes": row[4],
-            "status": row[5],
-            "scheduled_id": row[7]
-        })
+        # Intentar con todos los campos nuevos
+        try:
+            rows = db.execute("""
+                SELECT sector, start_time, end_time, type, duration_minutes, status, id, scheduled_id
+                FROM irrigation_log
+                ORDER BY id DESC
+                LIMIT 50
+            """).fetchall()
 
-    return jsonify(history)
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row[6],
+                    "sector": row[0],
+                    "start_time": row[1],
+                    "end_time": row[2],
+                    "type": row[3],
+                    "duration_minutes": row[4],
+                    "status": row[5],
+                    "scheduled_id": row[7]
+                })
+        except Exception as e:
+            # Si falla, usar campos básicos (BD antigua)
+            print(f"Warning: Using basic fields for irrigation_log: {e}")
+            rows = db.execute("""
+                SELECT sector, start_time, end_time, type, id
+                FROM irrigation_log
+                ORDER BY id DESC
+                LIMIT 50
+            """).fetchall()
+
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row[4],
+                    "sector": row[0],
+                    "start_time": row[1],
+                    "end_time": row[2],
+                    "type": row[3],
+                    "duration_minutes": None,
+                    "status": None,
+                    "scheduled_id": None
+                })
+
+        return jsonify(history)
+    except Exception as e:
+        print(f"Error in history_list: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Emergency stop - turn off all zones
 @routes.route("/irrigation/emergency-stop", methods=["POST"])
