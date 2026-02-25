@@ -52,6 +52,9 @@ def init_database():
     duration_minutes INTEGER,
     priority INTEGER DEFAULT 0,
     status TEXT DEFAULT 'en espera',
+    repeat_days TEXT DEFAULT '',
+    repeat_enabled INTEGER DEFAULT 0,
+    origin TEXT DEFAULT 'manual',
     enabled INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
