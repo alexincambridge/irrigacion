@@ -221,7 +221,7 @@ def schedule_list():
         try:
             rows = db.execute("""
                 SELECT id, sector, date, start_time, end_time, duration_minutes, priority, status, 
-                       repeat_days, repeat_enabled, origin, enabled
+                       repeat_days, repeat_enabled, origin
                 FROM irrigation_schedule
                 WHERE enabled = 1
                 ORDER BY priority ASC, date ASC, start_time ASC
@@ -242,7 +242,7 @@ def schedule_list():
                     "repeat_days": r[8],
                     "repeat_enabled": r[9],
                     "origin": r[10],
-                    "enabled": r[11]
+                    "enabled": 1  # Sabemos que enabled=1 porque es el WHERE
                 })
         except Exception as e:
             # Si falla, usar campos básicos
@@ -271,8 +271,8 @@ def schedule_list():
                     "start_time": r[3],
                     "end_time": end_time,
                     "duration_minutes": 30,
-                    "status": "en espera",
                     "priority": 0,
+                    "status": "en espera",
                     "repeat_days": "",
                     "repeat_enabled": 0,
                     "origin": "manual",
