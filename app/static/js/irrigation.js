@@ -728,6 +728,7 @@ async function createSchedule() {
     const dateEl = document.getElementById("date");
     const startEl = document.getElementById("time");
     const endEl = document.getElementById("end_time");
+    const repeatEnabledEl = document.getElementById("repeatEnabled");
 
     if (!sectorEl || !dateEl || !startEl || !endEl) {
         console.error("Missing form elements");
@@ -749,6 +750,22 @@ async function createSchedule() {
         return;
     }
 
+    // Obtener días seleccionados si está habilitada la repetición
+    let repeat_days = '';
+    let repeat_enabled = 0;
+
+    if (repeatEnabledEl && repeatEnabledEl.checked) {
+        const dayCheckboxes = document.querySelectorAll('.day-check:checked');
+        repeat_days = Array.from(dayCheckboxes).map(cb => cb.value).join('');
+
+        if (repeat_days.length === 0) {
+            showToast("Selecciona al menos un día para la repetición", 'warning');
+            return;
+        }
+
+        repeat_enabled = 1;
+    }
+
     try {
         const response = await fetch("/irrigation/schedule/add", {
             method: "POST",
@@ -757,7 +774,10 @@ async function createSchedule() {
                 sector,
                 date,
                 start_time,
-                end_time
+                end_time,
+                repeat_days,
+                repeat_enabled,
+                origin: 'programado'
             })
         });
 
@@ -772,6 +792,20 @@ async function createSchedule() {
     } catch (error) {
         console.error("Error creating schedule:", error);
         showToast("Error de conexión", 'error');
+    }
+}
+
+// Toggle repeat days visibility
+function toggleRepeatDays() {
+    const container = document.getElementById('repeatDaysContainer');
+    const checkbox = document.getElementById('repeatEnabled');
+
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        // Desmarcar todos los días si se desactiva
+        document.querySelectorAll('.day-check').forEach(cb => cb.checked = false);
     }
 }
 
@@ -817,8 +851,45 @@ function renderSchedules(schedules) {
             4: 'Árboles'
         };
 
+        // Determinar prioridad por sector (nueva)
+        const priorityMap = {
+            4: '⭐',        // Árboles - Prioridad 1
+            1: '⭐⭐',      // Jardín - Prioridad 2
+            2: '⭐⭐⭐',    // Huerta - Prioridad 3
+            3: '⭐⭐⭐⭐'   // Césped - Prioridad 4
+        };
+
+        const priority = priorityMap[schedule.sector] || '';
+
+        // Determinar si está regando ahora
+        const now = new Date();
+        const [startH, startM] = schedule.start_time.split(':').map(Number);
+        const [endH, endM] = schedule.end_time.split(':').map(Number);
+        const currentHour = now.getHours();
+        const currentMin = now.getMinutes();
+
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+        const currentTotal = currentHour * 60 + currentMin;
+
+        const isActive = currentTotal >= startTotal && currentTotal < endTotal;
+
+        // Origen: Manual o Programado
+        const origin = schedule.origin || (schedule.repeat_enabled ? 'programado' : 'manual');
+        const originIcon = origin === 'manual' ? '⏰' : '📅';
+        const originText = origin === 'manual' ? 'Manual' : 'Programado';
+
+        // Repetición
+        const repeatText = schedule.repeat_enabled && schedule.repeat_days
+            ? ` | 🔄 ${schedule.repeat_days}`
+            : '';
+
         html += `
-            <div class="schedule-item">
+            <div class="schedule-item ${isActive ? 'active' : ''}" data-schedule-id="${schedule.id}">
+                <div class="schedule-priority">
+                    ${priority}
+                </div>
+
                 <div class="schedule-info">
                     <div class="schedule-detail">
                         <div class="schedule-label">Sector</div>
@@ -839,7 +910,14 @@ function renderSchedules(schedules) {
 
                     <div class="schedule-detail">
                         <div class="schedule-label">Duración</div>
-                        <div class="schedule-value">${calculateDuration(schedule.start_time, schedule.end_time)}</div>
+                        <div class="schedule-value">${schedule.duration_minutes} min</div>
+                    </div>
+
+                    <div class="schedule-detail">
+                        <div class="schedule-label">Tipo</div>
+                        <div class="schedule-value schedule-status" style="color: ${isActive ? '#22c55e' : '#3b82f6'};">
+                            ${originIcon} ${originText}${repeatText}
+                        </div>
                     </div>
                 </div>
 

@@ -383,10 +383,71 @@
   animation: slideIn 0.5s ease;
 }
 
-.schedule-item.active {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  border-color: #86efac;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+.form-group-full {
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.repeat-label {
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.repeat-days-container {
+  background: #f9fafb;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.repeat-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.day-checkbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.day-check {
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  margin-bottom: 0.25rem;
+}
+
+.day-checkbox label {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.day-checkbox input:checked + label {
+  background: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+.day-checkbox label:hover {
+  border-color: #3b82f6;
 }
 
 .schedule-item:hover {
@@ -800,6 +861,7 @@
   font-weight: 500;
   color: #1f2937;
 }
+
 
 
 

@@ -38,10 +38,10 @@
           <i class="icon">🌱</i> Sector
         </label>
         <select id="sector" class="form-control">
-          <option value="1">Sector 1 - Jardín Principal</option>
-          <option value="2">Sector 2 - Huerta</option>
-          <option value="3">Sector 3 - Césped</option>
-          <option value="4">Sector 4 - Árboles</option>
+          <option value="4">Sector 4 - Árboles (Prioridad 1 ⭐)</option>
+          <option value="1">Sector 1 - Jardín Principal (Prioridad 2 ⭐⭐)</option>
+          <option value="2">Sector 2 - Huerta (Prioridad 3 ⭐⭐⭐)</option>
+          <option value="3">Sector 3 - Césped (Prioridad 4 ⭐⭐⭐⭐)</option>
         </select>
       </div>
 
@@ -66,6 +66,48 @@
           <i class="icon">⏱️</i> Hora de Fin
         </label>
         <input type="time" id="end_time" class="form-control" required>
+      </div>
+    </div>
+
+    <!-- Repetición Semanal -->
+    <div class="form-group-full">
+      <label for="repeatEnabled">
+        <input type="checkbox" id="repeatEnabled" onchange="toggleRepeatDays()">
+        <span class="repeat-label">🔄 Repetir automáticamente cada semana</span>
+      </label>
+    </div>
+
+    <div id="repeatDaysContainer" class="repeat-days-container" style="display: none;">
+      <label class="repeat-label">Selecciona los días:</label>
+      <div class="repeat-days-grid">
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayL" class="day-check" value="L">
+          <label for="dayL">L</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayM" class="day-check" value="M">
+          <label for="dayM">M</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayX" class="day-check" value="X">
+          <label for="dayX">X</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayJ" class="day-check" value="J">
+          <label for="dayJ">J</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayV" class="day-check" value="V">
+          <label for="dayV">V</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayS" class="day-check" value="S">
+          <label for="dayS">S</label>
+        </div>
+        <div class="day-checkbox">
+          <input type="checkbox" id="dayD" class="day-check" value="D">
+          <label for="dayD">D</label>
+        </div>
       </div>
     </div>
 

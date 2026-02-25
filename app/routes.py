@@ -123,6 +123,9 @@ def schedule_add():
         date = data.get("date")
         start_time = data.get("start_time")[:5]
         end_time = data.get("end_time")[:5]
+        repeat_days = data.get("repeat_days", "")
+        repeat_enabled = int(data.get("repeat_enabled", 0))
+        origin = data.get("origin", "manual")
 
         # Calcular duración en minutos
         start_hour, start_min = map(int, start_time.split(':'))
@@ -134,11 +137,22 @@ def schedule_add():
 
         db = get_db()
 
+        # Determinar prioridad por sector (nueva)
+        priority_map = {
+            4: 1,  # Árboles - Prioridad 1
+            1: 2,  # Jardín - Prioridad 2
+            2: 3,  # Huerta - Prioridad 3
+            3: 4   # Césped - Prioridad 4
+        }
+        priority = priority_map.get(sector, 0)
+
         db.execute("""
             INSERT INTO irrigation_schedule 
-            (sector, date, start_time, end_time, duration_minutes, status, priority, enabled)
-            VALUES (?, ?, ?, ?, ?, 'en espera', 0, 1)
-        """, (sector, date, start_time, end_time, duration_minutes))
+            (sector, date, start_time, end_time, duration_minutes, status, priority, 
+             repeat_days, repeat_enabled, origin, enabled)
+            VALUES (?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
+        """, (sector, date, start_time, end_time, duration_minutes, priority,
+              repeat_days, repeat_enabled, origin))
 
         db.commit()
 
@@ -206,10 +220,11 @@ def schedule_list():
         # Intentar obtener schedules con nuevos campos
         try:
             rows = db.execute("""
-                SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, enabled
+                SELECT id, sector, date, start_time, end_time, duration_minutes, status, priority, 
+                       repeat_days, repeat_enabled, origin, enabled
                 FROM irrigation_schedule
                 WHERE enabled = 1
-                ORDER BY priority DESC, date ASC, start_time ASC
+                ORDER BY priority ASC, date ASC, start_time ASC
                 LIMIT 10
             """).fetchall()
 
@@ -224,7 +239,10 @@ def schedule_list():
                     "duration_minutes": r[5],
                     "status": r[6],
                     "priority": r[7],
-                    "enabled": r[8]
+                    "repeat_days": r[8],
+                    "repeat_enabled": r[9],
+                    "origin": r[10],
+                    "enabled": r[11]
                 })
         except Exception as e:
             # Si falla, usar campos básicos
@@ -255,6 +273,9 @@ def schedule_list():
                     "duration_minutes": 30,
                     "status": "en espera",
                     "priority": 0,
+                    "repeat_days": "",
+                    "repeat_enabled": 0,
+                    "origin": "manual",
                     "enabled": 1
                 })
 
