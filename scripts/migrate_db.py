@@ -51,7 +51,7 @@ def migrate_database():
 
         if 'created_at' not in columns:
             print("  ➕ Agregando columna 'created_at'...")
-            cur.execute("ALTER TABLE irrigation_schedule ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE irrigation_schedule ADD COLUMN created_at TIMESTAMP")
 
         # Verificar columnas existentes en irrigation_log
         cur.execute("PRAGMA table_info(irrigation_log)")
@@ -74,7 +74,7 @@ def migrate_database():
 
         if 'created_at' not in columns:
             print("  ➕ Agregando columna 'created_at'...")
-            cur.execute("ALTER TABLE irrigation_log ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE irrigation_log ADD COLUMN created_at TIMESTAMP")
 
         conn.commit()
         print("✅ Migración completada exitosamente!")
