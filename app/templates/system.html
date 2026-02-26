@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}Sistema{% endblock %}
+{% block page_title %}Configuración del Sistema{% endblock %}
+{% block breadcrumb %}Sistema / Información y Dispositivos{% endblock %}
+
+{% block content %}
+
+<!-- Estado de Conexión -->
+<div class="system-section">
+  <div class="section-header">
+    <h3>🌐 Estado de Conexión</h3>
+    <span class="status-badge" id="internetStatus">
+      <span class="status-dot"></span> Verificando...
+    </span>
+  </div>
+
+  <div class="connection-grid">
+    <!-- Internet Connection -->
+    <div class="connection-card">
+      <div class="card-icon internet">🌍</div>
+      <div class="card-content">
+        <h4>Conexión a Internet</h4>
+        <div class="connection-status" id="internetConnectionStatus">
+          <span class="status-indicator">⏳</span>
+          <span class="status-text">Verificando...</span>
+        </div>
+        <div class="connection-details" id="internetDetails">
+          <div class="detail-row">
+            <span class="detail-label">IP Pública:</span>
+            <span class="detail-value" id="publicIP">--</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Proveedor:</span>
+            <span class="detail-value" id="ispName">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Local Network -->
+    <div class="connection-card">
+      <div class="card-icon local">🏠</div>
+      <div class="card-content">
+        <h4>Red Local</h4>
+        <div class="connection-details">
+          <div class="detail-row">
+            <span class="detail-label">IP Local:</span>
+            <span class="detail-value" id="localIP">{{ local_ip }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Hostname:</span>
+            <span class="detail-value" id="hostname">{{ hostname }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Gateway:</span>
+            <span class="detail-value" id="gateway">{{ gateway }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Dispositivos ESP32 -->
+<div class="system-section">
+  <div class="section-header">
+    <h3>📡 Dispositivos ESP32</h3>
+    <span class="device-count-badge" id="esp32Count">0 conectados</span>
+  </div>
+
+  <div class="devices-grid" id="esp32DevicesGrid">
+    <div class="loading-devices">
+      <div class="spinner"></div>
+      <p>Escaneando dispositivos ESP32...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Departamentos del Sistema -->
+<div class="system-section">
+  <div class="section-header">
+    <h3>🏢 Departamentos del Sistema</h3>
+  </div>
+
+  <div class="departments-grid">
+    <!-- Dashboard -->
+    <div class="department-card">
+      <div class="dept-icon">📊</div>
+      <div class="dept-content">
+        <h4>Dashboard</h4>
+        <p class="dept-description">Monitoreo en tiempo real de sensores y estado del sistema</p>
+        <div class="dept-stats">
+          <div class="stat-item">
+            <span class="stat-label">Sensores:</span>
+            <span class="stat-value">7</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Estado:</span>
+            <span class="stat-value active">Activo</span>
+          </div>
+        </div>
+        <a href="/dashboard" class="dept-link">Ir al Dashboard →</a>
+      </div>
+    </div>
+
+    <!-- Irrigación -->
+    <div class="department-card">
+      <div class="dept-icon">💧</div>
+      <div class="dept-content">
+        <h4>Sistema de Riego</h4>
+        <p class="dept-description">Control manual y programación automática de riegos</p>
+        <div class="dept-stats">
+          <div class="stat-item">
+            <span class="stat-label">Zonas:</span>
+            <span class="stat-value">4</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Estado:</span>
+            <span class="stat-value active">Activo</span>
+          </div>
+        </div>
+        <a href="/irrigation" class="dept-link">Ir a Riego →</a>
+      </div>
+    </div>
+
+    <!-- Consumo de Agua -->
+    <div class="department-card">
+      <div class="dept-icon">🚰</div>
+      <div class="dept-content">
+        <h4>Consumo de Agua</h4>
+        <p class="dept-description">Monitoreo y análisis de consumo de agua</p>
+        <div class="dept-stats">
+          <div class="stat-item">
+            <span class="stat-label">Total:</span>
+            <span class="stat-value" id="waterTotal">0 L</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Estado:</span>
+            <span class="stat-value active">Activo</span>
+          </div>
+        </div>
+        <a href="/water" class="dept-link">Ver Consumo →</a>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="department-card">
+      <div class="dept-icon">📋</div>
+      <div class="dept-content">
+        <h4>Registro de Actividad</h4>
+        <p class="dept-description">Historial completo de operaciones y eventos</p>
+        <div class="dept-stats">
+          <div class="stat-item">
+            <span class="stat-label">Registros:</span>
+            <span class="stat-value" id="logsCount">--</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Estado:</span>
+            <span class="stat-value active">Activo</span>
+          </div>
+        </div>
+        <a href="/logs" class="dept-link">Ver Logs →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Información del Sistema -->
+<div class="system-section">
+  <div class="section-header">
+    <h3>💻 Información del Sistema</h3>
+  </div>
+
+  <div class="system-info-grid">
+    <div class="info-card">
+      <div class="info-label">Sistema Operativo</div>
+      <div class="info-value" id="osInfo">{{ os_info }}</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Python Version</div>
+      <div class="info-value" id="pythonVersion">{{ python_version }}</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Uptime</div>
+      <div class="info-value" id="uptime">Calculando...</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Base de Datos</div>
+      <div class="info-value" id="dbStatus">
+        <span class="status-dot active"></span> Conectada
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/system.js') }}"></script>
+{% endblock %}
+
