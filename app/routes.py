@@ -146,13 +146,25 @@ def schedule_add():
         }
         priority = priority_map.get(sector, 0)
 
-        db.execute("""
-            INSERT INTO irrigation_schedule 
-            (sector, date, start_time, end_time, duration_minutes, status, priority, 
-             repeat_days, repeat_enabled, origin, enabled)
-            VALUES (?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
-        """, (sector, date, start_time, end_time, duration_minutes, priority,
-              repeat_days, repeat_enabled, origin))
+        columns = [row[1] for row in db.execute("PRAGMA table_info(irrigation_schedule)").fetchall()]
+        has_duration = "duration" in columns
+
+        if has_duration:
+            db.execute("""
+                INSERT INTO irrigation_schedule 
+                (sector, date, start_time, end_time, duration, duration_minutes, status, priority, 
+                 repeat_days, repeat_enabled, origin, enabled)
+                VALUES (?, ?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
+            """, (sector, date, start_time, end_time, duration_minutes, duration_minutes, priority,
+                  repeat_days, repeat_enabled, origin))
+        else:
+            db.execute("""
+                INSERT INTO irrigation_schedule 
+                (sector, date, start_time, end_time, duration_minutes, status, priority, 
+                 repeat_days, repeat_enabled, origin, enabled)
+                VALUES (?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
+            """, (sector, date, start_time, end_time, duration_minutes, priority,
+                  repeat_days, repeat_enabled, origin))
 
         db.commit()
 
