@@ -43,6 +43,42 @@ def dashboard_data():
         "dht_humidity": dht[1] if dht else None
     })
 
+@routes.route("/dashboard/history")
+@login_required
+def dashboard_history():
+    """Obtener histórico de sensores de las últimas 24 horas"""
+    try:
+        db = get_db()
+        from datetime import datetime, timedelta
+
+        # Últimas 24 horas
+        since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+
+        rows = db.execute("""
+            SELECT temperature, humidity, pressure, solar, ec, ph, timestamp
+            FROM sensor_data
+            WHERE timestamp > ?
+            ORDER BY timestamp ASC
+            LIMIT 500
+        """, (since,)).fetchall()
+
+        history = []
+        for row in rows:
+            history.append({
+                "temperature": row[0],
+                "humidity": row[1],
+                "pressure": row[2],
+                "solar": row[3],
+                "ec": row[4],
+                "ph": row[5],
+                "timestamp": row[6]
+            })
+
+        return jsonify(history)
+    except Exception as e:
+        print(f"Error fetching dashboard history: {e}")
+        return jsonify({"error": str(e)}), 500
+
 # --------------------
 # WATER CONSUMPTION
 # --------------------

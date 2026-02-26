@@ -69,6 +69,7 @@ const colors = {
 document.addEventListener('DOMContentLoaded', function() {
   initializeGauges();
   initializeChart();
+  loadHistoricalData();
   refresh();
   setInterval(refresh, 5000);
 
@@ -295,6 +296,65 @@ function initializeChart() {
   historyChart.render();
 
   console.log("✓ Chart initialized");
+}
+
+// Load historical data from server
+async function loadHistoricalData() {
+  try {
+    const response = await fetch('/dashboard/history');
+    if (!response.ok) {
+      console.error('Failed to load historical data');
+      return;
+    }
+
+    const data = await response.json();
+    if (!data || data.length === 0) {
+      console.log('No historical data available');
+      return;
+    }
+
+    // Separar datos por sensor
+    const tempData = [];
+    const humData = [];
+    const presData = [];
+    const solData = [];
+    const labels = [];
+
+    data.forEach(record => {
+      // Extraer la hora del timestamp
+      const time = new Date(record.timestamp).toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      labels.push(time);
+
+      tempData.push(record.temperature || null);
+      humData.push(record.humidity || null);
+      presData.push(record.pressure || null);
+      solData.push(record.solar || null);
+    });
+
+    // Actualizar el gráfico
+    if (historyChart) {
+      historyChart.updateOptions({
+        series: [
+          { name: 'Temperatura (°C)', data: tempData, color: '#ef4444' },
+          { name: 'Humedad (%)', data: humData, color: '#3b82f6' },
+          { name: 'Presión (hPa)', data: presData, color: '#8b5cf6' },
+          { name: 'Solar (W/m²)', data: solData, color: '#f59e0b' }
+        ],
+        xaxis: {
+          categories: labels
+        }
+      }, false);
+
+      historyChart.render();
+      console.log(`✓ Chart updated with ${data.length} records`);
+    }
+
+  } catch (error) {
+    console.error('Error loading historical data:', error);
+  }
 }
 
 // ========================================
