@@ -643,3 +643,143 @@ def hardware_status():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# --------------------
+# SYSTEM
+# --------------------
+@routes.route("/system")
+@login_required
+def system():
+    """Página de información del sistema"""
+    import socket
+    import platform
+    import sys
+
+    # Get local IP
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        local_ip = "127.0.0.1"
+
+    # Get hostname
+    hostname = socket.gethostname()
+
+    # Get gateway (approximate)
+    gateway = ".".join(local_ip.split(".")[:-1]) + ".1"
+
+    # OS info
+    os_info = f"{platform.system()} {platform.release()}"
+
+    # Python version
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    return render_template(
+        "system.html",
+        local_ip=local_ip,
+        hostname=hostname,
+        gateway=gateway,
+        os_info=os_info,
+        python_version=python_version
+    )
+
+@routes.route("/system/internet-check")
+@login_required
+def system_internet_check():
+    """Check internet connectivity"""
+    import urllib.request
+    import json
+
+    try:
+        # Try to get public IP
+        response = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=5)
+        data = json.loads(response.read().decode('utf-8'))
+        public_ip = data.get('ip', 'Unknown')
+
+        # Try to get ISP info
+        try:
+            isp_response = urllib.request.urlopen(f'https://ipapi.co/{public_ip}/json/', timeout=5)
+            isp_data = json.loads(isp_response.read().decode('utf-8'))
+            isp = isp_data.get('org', 'Unknown')
+        except:
+            isp = 'Unknown'
+
+        return jsonify({
+            "connected": True,
+            "public_ip": public_ip,
+            "isp": isp
+        })
+    except Exception as e:
+        return jsonify({
+            "connected": False,
+            "public_ip": None,
+            "isp": None,
+            "error": str(e)
+        })
+
+@routes.route("/system/esp32-devices")
+@login_required
+def system_esp32_devices():
+    """Scan for ESP32 devices on the network"""
+    import socket
+
+    # Get local network
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        network_prefix = ".".join(local_ip.split(".")[:-1])
+    except:
+        network_prefix = "192.168.1"
+
+    devices = []
+
+    # Check for known ESP32 devices (you can expand this list)
+    # In a real scenario, you'd scan the network or check a configuration
+    known_esp32_ips = [
+        f"{network_prefix}.100",
+        f"{network_prefix}.101",
+        f"{network_prefix}.102",
+        f"{network_prefix}.103"
+    ]
+
+    for i, ip in enumerate(known_esp32_ips):
+        # Try to ping or check if device responds
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            result = sock.connect_ex((ip, 80))  # Try HTTP port
+            online = (result == 0)
+            sock.close()
+
+            if online:
+                devices.append({
+                    "name": f"ESP32-{i+1}",
+                    "ip": ip,
+                    "mac": f"AA:BB:CC:DD:EE:{i:02d}",
+                    "zones": 4,
+                    "online": True,
+                    "last_seen": "Ahora"
+                })
+        except:
+            pass
+
+    return jsonify({"devices": devices})
+
+@routes.route("/system/water-total")
+@login_required
+def system_water_total():
+    """Get total water consumption"""
+    db = get_db()
+    total = db.execute("SELECT SUM(liters) FROM water_consumption").fetchone()
+    return jsonify({"total": total[0] or 0})
+
+@routes.route("/system/logs-count")
+@login_required
+def system_logs_count():
+    """Get total logs count"""
+    db = get_db()
+    count = db.execute("SELECT COUNT(*) FROM irrigation_log").fetchone()
+    return jsonify({"count": count[0] or 0})

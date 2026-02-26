@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/irrigation.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/system.css') }}">
 </head>
 
 <body>
@@ -19,11 +20,11 @@
       <h2>🌱 Irrigación</h2>
 
       <nav>
-        <a href="{{ url_for('routes.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('routes.water_consumption') }}">Consumo</a>
-        <a href="{{ url_for('routes.irrigation') }}">Irrigation</a>
-        <a href="{{ url_for('routes.irrigation_history') }}">Histórico</a>
-        <a href="{{ url_for('routes.irrigation_logs') }}">Logs</a>
+        <a href="{{ url_for('routes.dashboard') }}">📊 Dashboard</a>
+        <a href="{{ url_for('routes.irrigation') }}">💧 Irrigation</a>
+        <a href="{{ url_for('routes.water_consumption') }}">🚰 Consumo</a>
+        <a href="{{ url_for('routes.irrigation_logs') }}">📋 Logs</a>
+        <a href="{{ url_for('routes.system') }}">💻 Sistema</a>
       </nav>
 
       <div class="sidebar-bottom">
