@@ -94,7 +94,17 @@ def scheduler_loop():
                         conn.commit()
 
                 else:
-                    if zone_state(sector):
+                    # Only deactivate if there's no manual irrigation in progress
+                    # Check if there's an active manual irrigation for this sector
+                    manual_active = cur.execute("""
+                        SELECT id FROM irrigation_log
+                        WHERE sector = ?
+                          AND type = 'manual'
+                          AND end_time IS NULL
+                        LIMIT 1
+                    """, (sector,)).fetchone()
+
+                    if zone_state(sector) and not manual_active:
                         zone_off(sector)
 
                         cur.execute("""
