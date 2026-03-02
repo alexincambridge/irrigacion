@@ -1,9 +1,21 @@
 from flask import Blueprint, render_template, jsonify, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.db import get_db
 from datetime import datetime
 
 routes = Blueprint("routes", __name__)
+
+# --------------------
+# USER & SYSTEM INFO
+# --------------------
+@routes.route("/api/current-user")
+@login_required
+def get_current_user():
+    """Get current logged-in user information"""
+    return jsonify({
+        "username": current_user.username if hasattr(current_user, 'username') else 'Usuario',
+        "email": getattr(current_user, 'email', '')
+    })
 
 # --------------------
 # DASHBOARD
