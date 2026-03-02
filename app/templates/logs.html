@@ -3,49 +3,384 @@
 
 {% block content %}
 
-<h2>📋 Historial de Riegos</h2>
-
-<div class="card">
-
-  {% if logs %}
-  <table>
-    <tr>
-      <th>Sector</th>
-      <th>Inicio</th>
-      <th>Fin</th>
-      <th>Tipo</th>
-      <th>Duración</th>
-    </tr>
-
-    {% for log in logs %}
-    <tr>
-      <td>{{ log.sector }}</td>
-      <td>{{ log.start_time }}</td>
-      <td>{{ log.end_time if log.end_time else "En curso" }}</td>
-      <td>
-        {% if log.type == "manual" %}
-          🔵 Manual
-        {% else %}
-          🟢 Programado
-        {% endif %}
-      </td>
-      <td>
-        {% if log.end_time %}
-          {{ (
-            (log.end_time | tojson | safe)
-          ) }}
-        {% else %}
-          -
-        {% endif %}
-      </td>
-    </tr>
-    {% endfor %}
-
-  </table>
-  {% else %}
-    <p>No hay registros todavía.</p>
-  {% endif %}
-
+<div class="logs-header">
+  <h2>📋 Historial Completo de Riegos</h2>
+  <div class="logs-controls">
+    <input type="text" id="searchFilter" class="search-box" placeholder="🔍 Buscar por sector...">
+    <select id="typeFilter" class="filter-select">
+      <option value="">Todos los tipos</option>
+      <option value="manual">Manual</option>
+      <option value="programado">Programado</option>
+    </select>
+    <button class="btn btn-secondary" onclick="refreshLogs()">🔄 Actualizar</button>
+  </div>
 </div>
 
+<div class="card card-logs">
+  <div class="table-container">
+    <table class="logs-table" id="logsTable">
+      <thead>
+        <tr>
+          <th>Sector</th>
+          <th>Tipo</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th>Duración</th>
+          <th>Prioridad</th>
+          <th>Estado</th>
+          <th>Programado ID</th>
+        </tr>
+      </thead>
+      <tbody id="logsBody">
+        <tr class="loading-row">
+          <td colspan="8">
+            <div class="spinner"></div>
+            <p>Cargando registros...</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-footer">
+    <span class="record-count">Total: <strong id="totalRecords">0</strong> registros</span>
+    <div class="pagination">
+      <button class="btn-pagination" onclick="previousPage()" id="prevBtn" disabled>← Anterior</button>
+      <span id="pageInfo">Página 1</span>
+      <button class="btn-pagination" onclick="nextPage()" id="nextBtn">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.logs-header {
+  margin-bottom: 2rem;
+}
+
+.logs-controls {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.search-box,
+.filter-select {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.search-box {
+  flex: 1;
+  max-width: 300px;
+}
+
+.filter-select {
+  min-width: 150px;
+}
+
+.table-container {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.logs-table thead {
+  background: linear-gradient(135deg, #f6f8fb 0%, #ffffff 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.logs-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1f2937;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.logs-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.logs-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.logs-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.logs-table tbody tr.manual {
+  border-left: 4px solid #3b82f6;
+}
+
+.logs-table tbody tr.programado {
+  border-left: 4px solid #22c55e;
+}
+
+.logs-table .type-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.type-badge.manual {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.type-badge.programado {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.status-badge.completado {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.activo {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.en-espera {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.loading-row {
+  text-align: center;
+}
+
+.loading-row .spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin: 1rem auto;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.record-count {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-pagination {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.btn-pagination:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#pageInfo {
+  font-size: 0.9rem;
+  color: #6b7280;
+  min-width: 80px;
+  text-align: center;
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Logs state
+let allLogs = [];
+let filteredLogs = [];
+let currentPage = 1;
+const recordsPerPage = 20;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadLogs();
+
+  // Add event listeners for filters
+  document.getElementById('searchFilter').addEventListener('input', applyFilters);
+  document.getElementById('typeFilter').addEventListener('change', applyFilters);
+});
+
+async function loadLogs() {
+  try {
+    const response = await fetch('/irrigation/history/list');
+    const data = await response.json();
+
+    allLogs = data || [];
+    filteredLogs = [...allLogs];
+    currentPage = 1;
+
+    applyFilters();
+  } catch (error) {
+    console.error('Error loading logs:', error);
+    showLogsError('Error al cargar los registros');
+  }
+}
+
+function applyFilters() {
+  const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
+  const typeFilter = document.getElementById('typeFilter').value;
+
+  filteredLogs = allLogs.filter(log => {
+    const matchesSearch = log.sector.toString().includes(searchTerm);
+    const matchesType = !typeFilter || log.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  currentPage = 1;
+  renderLogs();
+}
+
+function renderLogs() {
+  const tbody = document.getElementById('logsBody');
+  const start = (currentPage - 1) * recordsPerPage;
+  const end = start + recordsPerPage;
+  const pageRecords = filteredLogs.slice(start, end);
+
+  if (pageRecords.length === 0) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="8"><p>No hay registros que coincidan con los filtros</p></td></tr>';
+    updatePagination();
+    return;
+  }
+
+  let html = '';
+  pageRecords.forEach(log => {
+    const sectorNames = {
+      1: 'Jardín Principal',
+      2: 'Huerta',
+      3: 'Césped',
+      4: 'Árboles'
+    };
+
+    const typeText = log.type === 'manual' ? 'Manual' : 'Programado';
+    const typeIcon = log.type === 'manual' ? '👤' : '📅';
+    const statusText = log.status || (log.end_time ? 'Completado' : 'En curso');
+    const statusClass = log.status ? log.status.replace(' ', '-').toLowerCase() : 'completado';
+
+    const duration = calculateLogDuration(log.start_time, log.end_time);
+
+    html += `
+      <tr class="${log.type}">
+        <td><strong>${log.sector}</strong> - ${sectorNames[log.sector] || 'Desconocido'}</td>
+        <td><span class="type-badge ${log.type}">${typeIcon} ${typeText}</span></td>
+        <td>${formatLogTime(log.start_time)}</td>
+        <td>${log.end_time ? formatLogTime(log.end_time) : '-'}</td>
+        <td>${duration}</td>
+        <td>${log.priority !== undefined ? '⭐'.repeat(Math.min(4, log.priority + 1)) : '-'}</td>
+        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        <td>${log.scheduled_id || '-'}</td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById('totalRecords').textContent = filteredLogs.length;
+  updatePagination();
+}
+
+function updatePagination() {
+  const totalPages = Math.ceil(filteredLogs.length / recordsPerPage);
+  document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages}`;
+  document.getElementById('prevBtn').disabled = currentPage === 1;
+  document.getElementById('nextBtn').disabled = currentPage === totalPages;
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(filteredLogs.length / recordsPerPage);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderLogs();
+    document.querySelector('.table-container').scrollTop = 0;
+  }
+}
+
+function previousPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderLogs();
+    document.querySelector('.table-container').scrollTop = 0;
+  }
+}
+
+function refreshLogs() {
+  loadLogs();
+}
+
+function formatLogTime(dateTimeString) {
+  if (!dateTimeString) return '-';
+  const date = new Date(dateTimeString);
+  const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+  return `${dateStr} ${timeStr}`;
+}
+
+function calculateLogDuration(start, end) {
+  if (!start || !end) return '-';
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const diffMs = endDate - startDate;
+  const diffMinutes = Math.floor(diffMs / 60000);
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m`;
+  } else {
+    const hours = Math.floor(diffMinutes / 60);
+    const mins = diffMinutes % 60;
+    return `${hours}h ${mins}m`;
+  }
+}
+
+function showLogsError(message) {
+  const tbody = document.getElementById('logsBody');
+  tbody.innerHTML = `<tr class="loading-row"><td colspan="8"><p style="color: #ef4444;">⚠️ ${message}</p></td></tr>`;
+}
+</script>
 {% endblock %}

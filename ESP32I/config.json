@@ -1,0 +1,128 @@
+{
+  "lora_config": {
+    "enabled": false,
+    "frequency": 915000000,
+    "bandwidth": 125000,
+    "spreading_factor": 7,
+    "coding_rate": 5,
+    "preamble_length": 8,
+    "sync_word": 0x34,
+    "tx_power": 17,
+    "enable_crc": true,
+    "timeout": 30000
+  },
+
+  "gateway": {
+    "spi_device": "/dev/spidev0.0",
+    "spi_speed": 4000000,
+    "gpio_rst": 17,
+    "gpio_dio0": 27,
+    "max_devices": 4
+  },
+
+  "devices": [
+    {
+      "id": 1,
+      "name": "ESP32-Sectores-1-4",
+      "description": "Control de Árboles, Jardín, Huerta, Césped",
+      "zones": [1, 2, 3, 4],
+      "ip": "192.168.1.100",
+      "mac_address": "AA:BB:CC:DD:EE:01",
+      "enabled": true,
+      "heartbeat_interval": 30,
+      "sensors": {
+        "temperature": true,
+        "humidity": true,
+        "water_pressure": true,
+        "water_flow": true
+      }
+    }
+  ],
+
+  "protocol": {
+    "header": "0xAA",
+    "max_retries": 3,
+    "retry_interval": 1000,
+    "frame_size": 256
+  },
+
+  "commands": {
+    "ZONE_ON": "0x01",
+    "ZONE_OFF": "0x02",
+    "STATUS": "0x03",
+    "TELEMETRY": "0x04",
+    "PING": "0x05",
+    "SET_SCHEDULE": "0x06",
+    "RESET": "0x07",
+    "UPDATE_FIRMWARE": "0x08"
+  },
+
+  "zones": {
+    "1": {
+      "name": "Árboles",
+      "priority": 1,
+      "gpio_pin": 25,
+      "default_duration_minutes": 45
+    },
+    "2": {
+      "name": "Jardín Principal",
+      "priority": 2,
+      "gpio_pin": 26,
+      "default_duration_minutes": 30
+    },
+    "3": {
+      "name": "Huerta",
+      "priority": 3,
+      "gpio_pin": 27,
+      "default_duration_minutes": 40
+    },
+    "4": {
+      "name": "Césped",
+      "priority": 4,
+      "gpio_pin": 32,
+      "default_duration_minutes": 35
+    }
+  },
+
+  "sensors_config": {
+    "pressure": {
+      "pin": 4,
+      "type": "ADC",
+      "min_voltage": 0.0,
+      "max_voltage": 10.0,
+      "min_pressure": 0,
+      "max_pressure": 10,
+      "unit": "bar"
+    },
+    "water_flow": {
+      "pin": 36,
+      "type": "ADC",
+      "min_voltage": 0.0,
+      "max_voltage": 5.0,
+      "liters_per_pulse": 0.001,
+      "unit": "L/min"
+    },
+    "dht22": {
+      "pin": 22,
+      "type": "I2C",
+      "unit_temp": "celsius",
+      "unit_humidity": "percent"
+    }
+  },
+
+  "fallback": {
+    "enabled": true,
+    "use_local_scheduling": true,
+    "retry_on_disconnect": true,
+    "retry_interval_seconds": 60
+  },
+
+  "logging": {
+    "enabled": true,
+    "level": "INFO",
+    "file": "/var/log/irrigacion/lora.log",
+    "max_size_mb": 100,
+    "backup_count": 5
+  }
+}
+

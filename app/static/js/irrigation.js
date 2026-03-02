@@ -23,7 +23,7 @@ function initializeSystem() {
     loadZones();
     loadSchedules();
     loadHistory();
-    updateLastUpdateTime();
+    updateLastUpdateTime(); // Now defined below
 }
 
 // Set default date to today
