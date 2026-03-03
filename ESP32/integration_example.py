@@ -15,7 +15,7 @@ app = Flask(__name__)
 lora = get_lora_controller()
 
 
-# Example 1: Manual valve control with duration
+# Example 1: Manual valve control with duration x
 @app.route("/api/irrigation/valve/<int:valve_id>/on", methods=["POST"])
 def turn_valve_on(valve_id):
     """
