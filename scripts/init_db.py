@@ -34,9 +34,10 @@ def init_database():
         INSERT INTO irrigation_zones (id, name, gpio_pin, enabled)
         VALUES (?, ?, ?, 1)
     """, [
-        (1, "Sector 1", 23),
-        (2, "Sector 2", 24),
-        (3, "Sector 3", 25),
+        (1, "Jardín", 23),
+        (2, "Huerta", 24),
+        (3, "Césped", 25),
+        (4, "Árboles", 27),
     ])
 
     # -------------------------
@@ -122,29 +123,13 @@ def init_database():
     # irrigation records
     # -------------------------
     cur.execute("""
-        CREATE TABLE irrigation_records (
+        CREATE TABLE IF NOT EXISTS irrigation_records (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             sector INTEGER NOT NULL,
             start_datetime TEXT NOT NULL,
             end_datetime TEXT NOT NULL,
             type TEXT NOT NULL CHECK(type IN ('manual','programado'))
-    
        )
-    """)
-    # -------------------------
-    # irrigation schedule
-    # -------------------------
-    cur.execute("""
-        CREATE TABLE irrigation_schedule (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sector INTEGER NOT NULL,
-            date TEXT NOT NULL,              -- 2026-02-13
-            start_time TEXT NOT NULL,        -- 18:00
-            end_time TEXT NOT NULL,          -- 18:30
-            duration INTEGER NOT NULL,       -- minutos
-            enabled INTEGER DEFAULT 1
-    )
-
     """)
 
 

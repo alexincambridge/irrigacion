@@ -4,6 +4,10 @@ DB_PATH = "database/irrigation.db"
 RELAY_PIN = 23
 DHT_PIN = 22
 
+# Peristaltic Pump (Fertilization)
+PUMP_PIN = 17  # GPIO 17 for peristaltic pump
+PUMP_MAX_DURATION = 3600  # Max 60 min safety limit (seconds)
+
 TEMP_MAX = 30
 HUM_MIN = 40
 WATER_TIME = 5
@@ -21,4 +25,16 @@ LORA_TX_POWER = 20  # dBm
 
 # Irrigation Zones
 NUM_ZONES = 4  # Number of irrigation zones/valves
+
+# Peripherals Registry (for health check page)
+PERIPHERALS = {
+    "relay_1": {"name": "Relé Zona 1 - Jardín", "type": "relay", "gpio": 23},
+    "relay_2": {"name": "Relé Zona 2 - Huerta", "type": "relay", "gpio": 24},
+    "relay_3": {"name": "Relé Zona 3 - Césped", "type": "relay", "gpio": 25},
+    "relay_4": {"name": "Relé Zona 4 - Árboles", "type": "relay", "gpio": 27},
+    "dht11": {"name": "DHT11 Temp/Humedad", "type": "sensor", "gpio": 22},
+    "pump": {"name": "Bomba Peristáltica", "type": "actuator", "gpio": 17},
+    "esp32_lora": {"name": "ESP32 LoRa (Tensiómetro)", "type": "esp32", "address": "lora"},
+    "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
+}
 

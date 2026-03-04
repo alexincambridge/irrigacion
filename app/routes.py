@@ -141,8 +141,11 @@ def fertilization():
 @routes.route("/api/fertilize", methods=["POST"])
 @login_required
 def apply_fertilizer():
-    """Apply a fertilization recipe (activates Zone 4)"""
-    from app.hardware_lora import zone_on
+    """Apply a fertilization recipe (activates Zone 4 + peristaltic pump)"""
+    try:
+        from app.config import HARDWARE_MODE
+    except ImportError:
+        HARDWARE_MODE = 'GPIO'
 
     data = request.get_json()
     recipe = data.get("recipe", "General")
@@ -152,22 +155,28 @@ def apply_fertilizer():
     ZONE_ID = 4
     duration_seconds = duration_minutes * 60
 
-    # Check if we can start
-    success = zone_on(ZONE_ID, duration_seconds)
+    try:
+        # Activate zone 4 (irrigation valve)
+        from app.hardware import zone_on as hw_zone_on, pump_on as hw_pump_on
 
-    if success:
-        # Log it
-        db = get_db()
-        db.execute("""
-            INSERT INTO irrigation_log 
-            (sector, start_time, end_time, type) 
-            VALUES (?, datetime('now'), datetime('now', '+' || ? || ' seconds'), ?)
-        """, (ZONE_ID, duration_seconds, f"Fertilizacion: {recipe}"))
-        db.commit()
+        success_zone = hw_zone_on(ZONE_ID, duration_seconds)
+        success_pump = hw_pump_on(duration_seconds)
 
-        return jsonify({"success": True, "message": f"Fertilización '{recipe}' iniciada por {duration_minutes} min"})
-    else:
-        return jsonify({"success": False, "error": "No se pudo iniciar el riego (ESP32 error)"}), 500
+        if success_zone or success_pump:
+            # Log it
+            db = get_db()
+            db.execute("""
+                INSERT INTO irrigation_log 
+                (sector, start_time, end_time, type) 
+                VALUES (?, datetime('now'), datetime('now', '+' || ? || ' seconds'), ?)
+            """, (ZONE_ID, duration_seconds, f"Fertilizacion: {recipe}"))
+            db.commit()
+
+            return jsonify({"success": True, "message": f"Fertilización '{recipe}' iniciada por {duration_minutes} min (Zona 4 + Bomba)"})
+        else:
+            return jsonify({"success": False, "error": "No se pudo iniciar (hardware error)"}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # Crear riego programado
@@ -205,25 +214,13 @@ def schedule_add():
         }
         priority = priority_map.get(sector, 0)
 
-        columns = [row[1] for row in db.execute("PRAGMA table_info(irrigation_schedule)").fetchall()]
-        has_duration = "duration" in columns
-
-        if has_duration:
-            db.execute("""
-                INSERT INTO irrigation_schedule 
-                (sector, date, start_time, end_time, duration, duration_minutes, status, priority, 
-                 repeat_days, repeat_enabled, origin, enabled)
-                VALUES (?, ?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
-            """, (sector, date, start_time, end_time, duration_minutes, duration_minutes, priority,
-                  repeat_days, repeat_enabled, origin))
-        else:
-            db.execute("""
-                INSERT INTO irrigation_schedule 
-                (sector, date, start_time, end_time, duration_minutes, status, priority, 
-                 repeat_days, repeat_enabled, origin, enabled)
-                VALUES (?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
-            """, (sector, date, start_time, end_time, duration_minutes, priority,
-                  repeat_days, repeat_enabled, origin))
+        db.execute("""
+            INSERT INTO irrigation_schedule 
+            (sector, date, start_time, end_time, duration, duration_minutes, status, priority, 
+             repeat_days, repeat_enabled, origin, enabled)
+            VALUES (?, ?, ?, ?, ?, ?, 'en espera', ?, ?, ?, ?, 1)
+        """, (sector, date, start_time, end_time, duration_minutes, duration_minutes, priority,
+              repeat_days, repeat_enabled, origin))
 
         db.commit()
 
@@ -806,3 +803,203 @@ def system_logs_count():
     db = get_db()
     count = db.execute("SELECT COUNT(*) FROM irrigation_log").fetchone()
     return jsonify({"count": count[0] or 0})
+
+# --------------------
+# PERIPHERALS / HEALTH CHECK
+# --------------------
+@routes.route("/peripherals")
+@login_required
+def peripherals():
+    """Página de estado de periféricos"""
+    return render_template("peripherals.html")
+
+@routes.route("/api/peripherals/status")
+@login_required
+def peripherals_status():
+    """Check status of all peripherals and return JSON"""
+    from app.config import HARDWARE_MODE
+    peripherals_config = {
+        "relay_1": {"name": "Relé Zona 1 - Jardín", "type": "relay", "gpio": 23},
+        "relay_2": {"name": "Relé Zona 2 - Huerta", "type": "relay", "gpio": 24},
+        "relay_3": {"name": "Relé Zona 3 - Césped", "type": "relay", "gpio": 25},
+        "relay_4": {"name": "Relé Zona 4 - Árboles", "type": "relay", "gpio": 27},
+        "dht11": {"name": "DHT11 Temp/Humedad", "type": "sensor", "gpio": 22},
+        "pump": {"name": "Bomba Peristáltica", "type": "actuator", "gpio": 17},
+        "esp32_lora": {"name": "ESP32 LoRa (Tensiómetro)", "type": "esp32", "address": "lora"},
+        "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
+    }
+
+    results = []
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for key, cfg in peripherals_config.items():
+        device = {
+            "id": key,
+            "name": cfg["name"],
+            "type": cfg["type"],
+            "status": "unknown",
+            "message": "",
+            "last_seen": now_str,
+            "detail": ""
+        }
+
+        try:
+            if cfg["type"] == "relay":
+                # Check relay GPIO
+                gpio_pin = cfg["gpio"]
+                try:
+                    from app.hardware import zone_state, ZONE_PINS
+                    # Find zone_id for this pin
+                    zone_id = None
+                    for zid, pin in ZONE_PINS.items():
+                        if pin == gpio_pin:
+                            zone_id = zid
+                            break
+
+                    if zone_id is not None:
+                        is_active = zone_state(zone_id)
+                        if is_active:
+                            device["status"] = "active"
+                            device["message"] = "Regando"
+                            device["detail"] = f"GPIO {gpio_pin} - HIGH"
+                        else:
+                            device["status"] = "ok"
+                            device["message"] = "Listo (en reposo)"
+                            device["detail"] = f"GPIO {gpio_pin} - LOW"
+                    else:
+                        device["status"] = "idle"
+                        device["message"] = "Pin no mapeado"
+                except ImportError:
+                    # On macOS/dev, no GPIO
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible (modo simulación)"
+                    device["detail"] = f"GPIO {gpio_pin}"
+
+            elif cfg["type"] == "sensor" and key == "dht11":
+                # Try reading DHT11
+                try:
+                    db = get_db()
+                    last = db.execute("""
+                        SELECT temperature, humidity, timestamp 
+                        FROM dht_readings 
+                        ORDER BY id DESC LIMIT 1
+                    """).fetchone()
+
+                    if last:
+                        device["status"] = "ok"
+                        device["message"] = f"T: {last[0]}°C | H: {last[1]}%"
+                        device["last_seen"] = str(last[2]) if last[2] else now_str
+                        device["detail"] = f"GPIO {cfg['gpio']}"
+                    else:
+                        device["status"] = "idle"
+                        device["message"] = "Sin lecturas recientes"
+                        device["detail"] = f"GPIO {cfg['gpio']}"
+                except Exception as e:
+                    device["status"] = "error"
+                    device["message"] = f"Error: {str(e)[:50]}"
+
+            elif cfg["type"] == "sensor" and key == "fertilizer_counter":
+                # Fertilizer counter - check GPIO
+                try:
+                    from app.gpio import setup_pin, read_pin
+                    device["status"] = "idle"
+                    device["message"] = "En reposo"
+                    device["detail"] = f"GPIO {cfg['gpio']}"
+                except ImportError:
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible"
+
+            elif cfg["type"] == "actuator" and key == "pump":
+                # Peristaltic pump
+                try:
+                    from app.hardware import pump_state
+                    if pump_state():
+                        device["status"] = "active"
+                        device["message"] = "Bomba activa (inyectando)"
+                    else:
+                        device["status"] = "ok"
+                        device["message"] = "Bomba en espera"
+                    device["detail"] = f"GPIO {cfg['gpio']}"
+                except ImportError:
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible"
+
+            elif cfg["type"] == "esp32":
+                # ESP32 via LoRa
+                try:
+                    if HARDWARE_MODE == 'LORA':
+                        from app.lora_controller import get_lora_controller
+                        lora = get_lora_controller()
+                        if lora and lora.ping():
+                            device["status"] = "ok"
+                            device["message"] = "Conectado vía LoRa"
+                            quality = lora.get_signal_quality()
+                            if quality:
+                                device["detail"] = f"RSSI: {quality.get('rssi', '?')} dBm"
+                        else:
+                            device["status"] = "error"
+                            device["message"] = "Sin respuesta LoRa"
+                    else:
+                        device["status"] = "idle"
+                        device["message"] = f"Modo {HARDWARE_MODE} (LoRa desactivado)"
+                except Exception as e:
+                    device["status"] = "error"
+                    device["message"] = f"Error LoRa: {str(e)[:50]}"
+
+        except Exception as e:
+            device["status"] = "error"
+            device["message"] = f"Error: {str(e)[:60]}"
+
+        results.append(device)
+
+    # Also check database health
+    try:
+        db = get_db()
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        db_status = {
+            "id": "database",
+            "name": "Base de Datos SQLite",
+            "type": "system",
+            "status": "ok",
+            "message": f"{len(tables)} tablas activas",
+            "last_seen": now_str,
+            "detail": "irrigation.db"
+        }
+    except Exception as e:
+        db_status = {
+            "id": "database",
+            "name": "Base de Datos SQLite",
+            "type": "system",
+            "status": "error",
+            "message": str(e)[:60],
+            "last_seen": now_str,
+            "detail": ""
+        }
+    results.append(db_status)
+
+    return jsonify(results)
+
+@routes.route("/api/pump/on", methods=["POST"])
+@login_required
+def pump_on_route():
+    """Turn on peristaltic pump"""
+    try:
+        data = request.get_json() or {}
+        duration = data.get("duration", 300)  # default 5 min
+        from app.hardware import pump_on
+        pump_on(duration)
+        return jsonify({"success": True, "message": f"Bomba encendida ({duration}s)"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@routes.route("/api/pump/off", methods=["POST"])
+@login_required
+def pump_off_route():
+    """Turn off peristaltic pump"""
+    try:
+        from app.hardware import pump_off
+        pump_off()
+        return jsonify({"success": True, "message": "Bomba apagada"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+

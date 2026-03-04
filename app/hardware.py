@@ -1,41 +1,56 @@
 import RPi.GPIO as GPIO
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 
 ZONE_PINS = {
-    1: 23, # sector 1
-    2: 24, # sector 2
-    3: 25, # sector 3
+    1: 23, # sector 1 - Jardín
+    2: 24, # sector 2 - Huerta
+    3: 25, # sector 3 - Césped
+    4: 27, # sector 4 - Árboles
 }
 
+PUMP_PIN = 17  # Peristaltic pump for fertilization
+
 _active_zones = set()
+_pump_active = False
+_pump_timer = None
 
 # Inicializar pines en LOW
 for pin in ZONE_PINS.values():
     GPIO.setup(pin, GPIO.OUT)
     GPIO.output(pin, GPIO.LOW)
 
+# Initialize pump pin
+GPIO.setup(PUMP_PIN, GPIO.OUT)
+GPIO.output(PUMP_PIN, GPIO.LOW)
 
-def zone_on(zone_id):
+
+def zone_on(zone_id, duration=0):
     pin = ZONE_PINS.get(zone_id)
     if pin is None:
-        print(f"[HW] Zona inválida: {zone_id}")
-        return
+        logger.warning(f"[HW] Zona inválida: {zone_id}")
+        return False
 
     GPIO.output(pin, GPIO.HIGH)
     _active_zones.add(zone_id)
-    print(f"[HW] Zona {zone_id} ON (GPIO {pin})")
+    logger.info(f"[HW] Zona {zone_id} ON (GPIO {pin})")
+    return True
 
 
 def zone_off(zone_id):
     pin = ZONE_PINS.get(zone_id)
     if pin is None:
-        return
+        return False
 
     GPIO.output(pin, GPIO.LOW)
     _active_zones.discard(zone_id)
-    print(f"[HW] Zona {zone_id} OFF (GPIO {pin})")
+    logger.info(f"[HW] Zona {zone_id} OFF (GPIO {pin})")
+    return True
 
 
 def zone_state(zone_id):
@@ -45,4 +60,68 @@ def zone_state(zone_id):
 def all_off():
     for zone in list(_active_zones):
         zone_off(zone)
+    pump_off()
+
+
+# --- Peristaltic Pump ---
+def pump_on(duration_seconds=0):
+    """Turn on peristaltic pump with optional auto-off"""
+    global _pump_active, _pump_timer
+
+    if _pump_timer:
+        _pump_timer.cancel()
+        _pump_timer = None
+
+    GPIO.output(PUMP_PIN, GPIO.HIGH)
+    _pump_active = True
+    logger.info(f"[HW] Bomba peristáltica ON (GPIO {PUMP_PIN})")
+
+    if duration_seconds > 0:
+        max_dur = 3600  # Hard limit 60 min
+        duration_seconds = min(duration_seconds, max_dur)
+        _pump_timer = threading.Timer(duration_seconds, pump_off)
+        _pump_timer.daemon = True
+        _pump_timer.start()
+        logger.info(f"[HW] Bomba auto-off en {duration_seconds}s")
+
+    return True
+
+
+def pump_off():
+    """Turn off peristaltic pump"""
+    global _pump_active, _pump_timer
+
+    if _pump_timer:
+        _pump_timer.cancel()
+        _pump_timer = None
+
+    GPIO.output(PUMP_PIN, GPIO.LOW)
+    _pump_active = False
+    logger.info(f"[HW] Bomba peristáltica OFF")
+    return True
+
+
+def pump_state():
+    """Check if pump is running"""
+    return _pump_active
+
+
+def get_hardware_info():
+    """Get hardware configuration and status"""
+    return {
+        'mode': 'GPIO',
+        'zones': len(ZONE_PINS),
+        'active_zones': list(_active_zones),
+        'pump_active': _pump_active
+    }
+
+
+def check_connection():
+    """Check if GPIO hardware is available"""
+    return GPIO is not None
+
+
+def get_all_zones_status():
+    """Get status of all zones"""
+    return {zone_id: zone_id in _active_zones for zone_id in ZONE_PINS.keys()}
 

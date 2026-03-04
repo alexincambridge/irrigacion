@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Periféricos - Estado{% endblock %}
+{% block page_title %}🔌 Estado de Periféricos{% endblock %}
+{% block breadcrumb %}Periféricos{% endblock %}
+
+{% block content %}
+
+<div class="peripherals-page">
+
+  <!-- Header -->
+  <div class="periph-header">
+    <div class="periph-header-left">
+      <h2>Estado del Hardware</h2>
+      <p class="periph-subtitle">Monitorización en tiempo real de todos los dispositivos conectados</p>
+    </div>
+    <div class="periph-header-right">
+      <span class="periph-last-update" id="periphLastUpdate">Actualizando...</span>
+      <button class="btn-refresh" onclick="refreshPeripherals()" id="btnRefresh">
+        🔄 Actualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Bar -->
+  <div class="periph-summary">
+    <div class="summary-item summary-ok">
+      <span class="summary-count" id="countOk">0</span>
+      <span class="summary-label">Operativos</span>
+    </div>
+    <div class="summary-item summary-active">
+      <span class="summary-count" id="countActive">0</span>
+      <span class="summary-label">Activos</span>
+    </div>
+    <div class="summary-item summary-idle">
+      <span class="summary-count" id="countIdle">0</span>
+      <span class="summary-label">En reposo</span>
+    </div>
+    <div class="summary-item summary-error">
+      <span class="summary-count" id="countError">0</span>
+      <span class="summary-label">Error</span>
+    </div>
+  </div>
+
+  <!-- Devices Grid -->
+  <div class="periph-grid" id="periphGrid">
+    <div class="periph-loading">
+      <div class="spinner"></div>
+      <p>Comprobando periféricos...</p>
+    </div>
+  </div>
+
+  <!-- Pump Control Panel -->
+  <div class="periph-section">
+    <div class="section-title">
+      <h3>💉 Control Bomba Peristáltica</h3>
+    </div>
+    <div class="pump-controls">
+      <div class="pump-status" id="pumpStatus">
+        <span class="pump-indicator off"></span>
+        <span>Estado: <strong id="pumpStatusText">Desconocido</strong></span>
+      </div>
+      <div class="pump-actions">
+        <button class="btn-pump btn-pump-on" onclick="pumpOn()" id="btnPumpOn">
+          ▶ Encender Bomba (5 min)
+        </button>
+        <button class="btn-pump btn-pump-off" onclick="pumpOff()" id="btnPumpOff">
+          ⏸ Apagar Bomba
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/peripherals.css') }}">
+<script src="{{ url_for('static', filename='js/peripherals.js') }}"></script>
+{% endblock %}
+
