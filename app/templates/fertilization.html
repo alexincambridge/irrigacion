@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Fertilización - Aguacates{% endblock %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-seedling text-success"></i> Fertilización Aguacates (Zona 4)</h2>
+                    <p class="text-muted mb-0">Plan nutricional adaptado a la Costa Tropical (Sur de España)</p>
+                </div>
+                <div class="text-end">
+                    <h5 class="mb-0" id="current-date-display">...</h5>
+                    <span class="badge bg-primary" id="current-season-badge">...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row fade-in">
+    <!-- Panel de Control y Estado Actual -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0 card-title"><i class="fas fa-calendar-check text-primary"></i> Estado Actual</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info border-0 d-flex align-items-center" role="alert">
+                    <i class="fas fa-info-circle fa-2x me-3"></i>
+                    <div>
+                        <strong>Etapa Fenológica:</strong>
+                        <div id="current-stage">Cargando...</div>
+                    </div>
+                </div>
+
+                <div class="card bg-light border-0 mb-3">
+                    <div class="card-body">
+                        <h6 class="text-muted text-uppercase small fw-bold">Recomendación Mes Actual</h6>
+                        <ul class="list-unstyled mb-0" id="current-recommendation-list">
+                            <li><i class="fas fa-spinner fa-spin"></i> Cargando...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="text-muted text-uppercase small fw-bold mb-3">Acciones Rápidas</h6>
+
+                <form id="fertilization-form">
+                    <div class="mb-3">
+                        <label class="form-label">Duración inyección (minutos)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <input type="number" class="form-control" id="duration" value="30" min="5" max="120">
+                        </div>
+                        <small class="text-muted">Se activará la Zona 4 (Árboles)</small>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-play"></i> Iniciar Fertilización (Receta Actual)
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendario Anual / Tabla -->
+    <div class="col-lg-8 mb-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 card-title"><i class="fas fa-calendar-alt text-primary"></i> Calendario Anual</h5>
+
+                <select class="form-select form-select-sm w-auto" id="month-selector">
+                    <option value="0">Enero</option>
+                    <option value="1">Febrero</option>
+                    <option value="2">Marzo</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Mayo</option>
+                    <option value="5">Junio</option>
+                    <option value="6">Julio</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Septiembre</option>
+                    <option value="9">Octubre</option>
+                    <option value="10">Noviembre</option>
+                    <option value="11">Diciembre</option>
+                </select>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 25%">Elemento</th>
+                                <th style="width: 15%">Importancia</th>
+                                <th>Dosis / Descripción</th>
+                                <th style="width: 15%">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-body">
+                            <!-- JS will populate -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Wiki Sección -->
+<div class="row fade-in">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0">
+                <h5 class="mb-0 card-title"><i class="fas fa-book text-primary"></i> Wiki de Fertilización (Guía Rápida)</h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="wikiAccordion">
+
+                    <!-- Item 1 -->
+                    <div class="accordion-item border-0 mb-2 shadow-sm rounded">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                <i class="fas fa-leaf me-2 text-success"></i> Primavera: Floración y Cuajado (Zinc y Boro)
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#wikiAccordion">
+                            <div class="accordion-body text-muted">
+                                <p>En la Costa Tropical, la floración ocurre entre <strong>marzo y mayo</strong>. Es crucial aplicar:</p>
+                                <ul>
+                                    <li><strong>Zinc (Zn):</strong> Esencial para el crecimiento de los entrenudos y el tamaño de la hoja.</li>
+                                    <li><strong>Boro (B):</strong> Fundamental para la germinación del tubo polínico. Sin Boro, la fruta no cuaja.</li>
+                                    <li><strong>Nitrógeno (N):</strong> Aportar un 30% del anual en esta época para sostener el brote vegetativo.</li>
+                                </ul>
+                                <div class="alert alert-secondary">
+                                    <small><i class="fas fa-flask"></i> <strong>Receta Sugerida:</strong> NPK 20-5-5 + Correctores de carencias.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 2 -->
+                    <div class="accordion-item border-0 mb-2 shadow-sm rounded">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                <i class="fas fa-apple-alt me-2 text-danger"></i> Verano: Crecimiento del Fruto
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#wikiAccordion">
+                            <div class="accordion-body text-muted">
+                                <p>El fruto crece rápidamente (división celular y expansión). Necesitamos equilibrio y <strong>Calcio</strong>.</p>
+                                <ul>
+                                    <li><strong>Equilibrio N-P-K:</strong> Se recomienda una fórmula balanceada (ej. 20-20-20) o similar.</li>
+                                    <li><strong>Calcio (Ca):</strong> Evita desórdenes fisiológicos en el futuro fruto. Aplicar Nitrato de Calcio (soluble).</li>
+                                    <li><strong>Riego:</strong> Es vital mantener la humedad constante; el estrés hídrico tira la fruta.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 3 -->
+                    <div class="accordion-item border-0 mb-2 shadow-sm rounded">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                <i class="fas fa-layer-group me-2 text-warning"></i> Otoño: Engorde y Reservas (Potasio)
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#wikiAccordion">
+                            <div class="accordion-body text-muted">
+                                <p>Preparación para la cosecha y el invierno. El potasio es el protagonista.</p>
+                                <ul>
+                                    <li><strong>Potasio (K):</strong> Transporta azúcares al fruto, aumentando calibre y peso.</li>
+                                    <li><strong>Reducir Nitrógeno:</strong> Demasiado N ahora produce brotes tiernos que pueden dañarse con el frío o reducir la calidad de la fruta.</li>
+                                    <li><strong>Fósforo (P):</strong> Ayuda al desarrollo radicular de otoño.</li>
+                                </ul>
+                                <div class="alert alert-secondary">
+                                    <small><i class="fas fa-flask"></i> <strong>Receta Sugerida:</strong> NPK 5-10-30 o Nitrato Potásico.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item 4 -->
+                    <div class="accordion-item border-0 mb-2 shadow-sm rounded">
+                        <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                <i class="fas fa-exclamation-triangle me-2 text-info"></i> Corrección de Hierro (Clorosis Férrica)
+                            </button>
+                        </h2>
+                        <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#wikiAccordion">
+                            <div class="accordion-body text-muted">
+                                <p>Los suelos de la Costa Tropical suelen ser calizos (pH alto), bloqueando el Hierro.</p>
+                                <ul>
+                                    <li><strong>Síntoma:</strong> Hojas nuevas amarillas con nervios verdes.</li>
+                                    <li><strong>Solución:</strong> Quelato de Hierro (Fe-EDDHA). Es el único efectivo en suelo calizo.</li>
+                                    <li><strong>Época:</strong> Aplicar al inicio de la brotación de primavera y verano.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/fertilization.js') }}"></script>
+{% endblock %}
