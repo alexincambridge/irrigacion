@@ -131,32 +131,43 @@ def alarms():
 @routes.route("/irrigation")
 @login_required
 def irrigation():
+    return render_template("irrigation.html")
 
-    db = get_db()
+@routes.route("/fertilization")
+@login_required
+def fertilization():
+    return render_template("fertilization.html")
 
-    # Riegos pendientes (máximo 10)
-    schedules = db.execute("""
-        SELECT id, sector, date, start_time
-        FROM irrigation_schedule
-        WHERE datetime(date || ' ' || start_time) > datetime('now')
-          AND enabled = 1
-        ORDER BY date ASC, start_time ASC
-        LIMIT 10
-    """).fetchall()
+@routes.route("/api/fertilize", methods=["POST"])
+@login_required
+def apply_fertilizer():
+    """Apply a fertilization recipe (activates Zone 4)"""
+    from app.hardware_lora import zone_on
 
-    # Historial últimos 10
-    history = db.execute("""
-        SELECT sector, start_time, end_time, type
-        FROM irrigation_log
-        ORDER BY id DESC
-        LIMIT 10
-    """).fetchall()
+    data = request.get_json()
+    recipe = data.get("recipe", "General")
+    duration_minutes = data.get("duration", 30)
 
-    return render_template(
-        "irrigation.html",
-        schedules=schedules,
-        history=history
-    )
+    # Zone 4 is for Trees
+    ZONE_ID = 4
+    duration_seconds = duration_minutes * 60
+
+    # Check if we can start
+    success = zone_on(ZONE_ID, duration_seconds)
+
+    if success:
+        # Log it
+        db = get_db()
+        db.execute("""
+            INSERT INTO irrigation_log 
+            (sector, start_time, end_time, type) 
+            VALUES (?, datetime('now'), datetime('now', '+' || ? || ' seconds'), ?)
+        """, (ZONE_ID, duration_seconds, f"Fertilizacion: {recipe}"))
+        db.commit()
+
+        return jsonify({"success": True, "message": f"Fertilización '{recipe}' iniciada por {duration_minutes} min"})
+    else:
+        return jsonify({"success": False, "error": "No se pudo iniciar el riego (ESP32 error)"}), 500
 
 
 # Crear riego programado
