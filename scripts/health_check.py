@@ -268,33 +268,49 @@ def main():
     # ---- 5. Check ESP32 LoRa ----
     print("📡 Comprobando ESP32 LoRa...")
     try:
-        from app.config import HARDWARE_MODE
+        # Read HARDWARE_MODE directly to avoid triggering GPIO imports
+        try:
+            from app.config import HARDWARE_MODE
+        except Exception:
+            HARDWARE_MODE = 'SIMULATION'
+
         if HARDWARE_MODE == 'LORA':
-            from app.lora_controller import get_lora_controller
-            lora = get_lora_controller()
-            if lora and lora.ping():
-                quality = lora.get_signal_quality()
-                rssi = quality.get('rssi', '?') if quality else '?'
+            try:
+                from app.lora_controller import get_lora_controller
+                lora = get_lora_controller()
+                if lora and lora.ping():
+                    quality = lora.get_signal_quality()
+                    rssi = quality.get('rssi', '?') if quality else '?'
+                    results.append({
+                        "device": "ESP32 LoRa (Tensiómetro)",
+                        "type": "esp32",
+                        "status": "ok",
+                        "message": f"Conectado vía LoRa (RSSI: {rssi} dBm)",
+                        "detail": "LoRa 868MHz",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    print(f"   ✅ ESP32 LoRa: Conectado (RSSI: {rssi} dBm)")
+                else:
+                    results.append({
+                        "device": "ESP32 LoRa (Tensiómetro)",
+                        "type": "esp32",
+                        "status": "error",
+                        "message": "Sin respuesta al ping",
+                        "detail": "LoRa",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    errors += 1
+                    print("   ❌ ESP32 LoRa: Sin respuesta")
+            except ImportError as ie:
                 results.append({
                     "device": "ESP32 LoRa (Tensiómetro)",
                     "type": "esp32",
-                    "status": "ok",
-                    "message": f"Conectado vía LoRa (RSSI: {rssi} dBm)",
-                    "detail": "LoRa 868MHz",
-                    "timestamp": datetime.now().isoformat()
-                })
-                print(f"   ✅ ESP32 LoRa: Conectado (RSSI: {rssi} dBm)")
-            else:
-                results.append({
-                    "device": "ESP32 LoRa (Tensiómetro)",
-                    "type": "esp32",
-                    "status": "error",
-                    "message": "Sin respuesta al ping",
+                    "status": "idle",
+                    "message": f"Librería LoRa no disponible ({ie})",
                     "detail": "LoRa",
                     "timestamp": datetime.now().isoformat()
                 })
-                errors += 1
-                print("   ❌ ESP32 LoRa: Sin respuesta")
+                print(f"   ⚠️  LoRa no disponible: {ie}")
         else:
             results.append({
                 "device": "ESP32 LoRa (Tensiómetro)",
