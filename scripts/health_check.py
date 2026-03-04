@@ -181,7 +181,7 @@ def main():
         try:
             conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
-            cur.execute("SELECT temperature, humidity, created_at FROM dht_readings ORDER BY id DESC LIMIT 1")
+            cur.execute("SELECT temperature, humidity, timestamp FROM dht_readings ORDER BY id DESC LIMIT 1")
             row = cur.fetchone()
             conn.close()
             if row:
