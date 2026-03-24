@@ -823,7 +823,7 @@ def peripherals_status():
         "relay_2": {"name": "Relé Zona 2 - Huerta", "type": "relay", "gpio": 24},
         "relay_3": {"name": "Relé Zona 3 - Césped", "type": "relay", "gpio": 25},
         "relay_4": {"name": "Relé Zona 4 - Árboles", "type": "relay", "gpio": 27},
-        "dht11": {"name": "DHT11 Temp/Humedad", "type": "sensor", "gpio": 22},
+        "dht22": {"name": "DHT22 Temp/Humedad", "type": "sensor", "gpio": 4},
         "pump": {"name": "Bomba Peristáltica", "type": "actuator", "gpio": 17},
         "esp32_lora": {"name": "ESP32 LoRa (Tensiómetro)", "type": "esp32", "address": "lora"},
         "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
@@ -875,8 +875,8 @@ def peripherals_status():
                     device["message"] = "GPIO no disponible (modo simulación)"
                     device["detail"] = f"GPIO {gpio_pin}"
 
-            elif cfg["type"] == "sensor" and key == "dht11":
-                # Try reading DHT11
+            elif cfg["type"] == "sensor" and key == "dht22":
+                # Try reading DHT22
                 try:
                     db = get_db()
                     last = db.execute("""
@@ -908,6 +908,7 @@ def peripherals_status():
                 except ImportError:
                     device["status"] = "idle"
                     device["message"] = "GPIO no disponible"
+
 
             elif cfg["type"] == "actuator" and key == "pump":
                 # Peristaltic pump
