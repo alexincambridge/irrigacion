@@ -20,13 +20,30 @@ def insert_reading(temp: float, hum: float) -> None:
     """Insertar lectura en base de datos"""
     conn = sqlite3.connect(DB_PATH, timeout=10)
     cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO dht_readings (temperature, humidity, created_at)
-        VALUES (?, ?, ?)
-        """,
-        (temp, hum, datetime.now())
-    )
+
+    try:
+        # Intentar insertar con created_at explícito
+        cur.execute(
+            """
+            INSERT INTO dht_readings (temperature, humidity, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (temp, hum, datetime.now())
+        )
+    except sqlite3.OperationalError as e:
+        if "created_at" in str(e):
+            # Si falta created_at, intentar sin ella (usa CURRENT_TIMESTAMP)
+            print("[⚠️  WARN] Columna created_at no existe, usando SQL CURRENT_TIMESTAMP")
+            cur.execute(
+                """
+                INSERT INTO dht_readings (temperature, humidity)
+                VALUES (?, ?)
+                """,
+                (temp, hum)
+            )
+        else:
+            raise
+
     conn.commit()
     conn.close()
 
