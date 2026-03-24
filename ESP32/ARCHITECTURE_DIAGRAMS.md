@@ -1,0 +1,304 @@
+# System Architecture Diagram
+
+## High-Level Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         IRRIGATION SYSTEM                               │
+│                                                                         │
+│  ┌──────────────────────────┐         ┌──────────────────────────┐    │
+│  │    USER INTERFACE        │         │    CONTROL SYSTEM        │    │
+│  │                          │         │                          │    │
+│  │  • Web Browser           │────────►│  • Raspberry Pi          │    │
+│  │  • Mobile Device         │  HTTP   │  • Flask Web App         │    │
+│  │  • Dashboard             │         │  • Database              │    │
+│  │  • Scheduling            │         │  • Scheduler             │    │
+│  └──────────────────────────┘         └────────────┬─────────────┘    │
+│                                                     │                  │
+│                                         LoRa Radio  │                  │
+│                                       (915/868 MHz) │                  │
+│                                                     ▼                  │
+│                                        ┌─────────────────────────┐    │
+│                                        │    FIELD CONTROLLER     │    │
+│                                        │                         │    │
+│                                        │  • ESP32 + LoRa         │    │
+│                                        │  • 4-CH Relay Module    │    │
+│                                        │  • Auto-shutoff Timers  │    │
+│                                        └──────────┬──────────────┘    │
+│                                                   │                   │
+│                                    ┌──────────────┼──────────────┐    │
+│                                    │              │              │    │
+│                              ┌─────▼────┐   ┌────▼─────┐   ┌────▼────┐
+│                              │ Valve 1  │   │ Valve 2  │   │ Valve 3,4│
+│                              │  Zone 1  │   │  Zone 2  │   │ Zone 3,4│
+│                              └──────────┘   └──────────┘   └─────────┘
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Data Flow
+
+```
+USER ACTION
+    │
+    ▼
+┌───────────────────┐
+│  Web Interface    │  "Turn on Valve 1 for 5 minutes"
+│  (Browser)        │
+└─────────┬─────────┘
+          │ HTTP POST
+          ▼
+┌───────────────────┐
+│  Flask Routes     │  /api/irrigation/valve/1/on
+│  (routes.py)      │  {"duration": 300}
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  Hardware Layer   │  zone_on(1, duration=300)
+│ (hardware_lora.py)│
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  LoRa Controller  │  Command: "ON:1:300"
+│(lora_controller.py)│
+└─────────┬─────────┘
+          │ LoRa Radio
+          │ 915 MHz
+          ▼
+┌───────────────────┐
+│  ESP32 Receiver   │  Parse: ON, valve=1, duration=300
+│ (Arduino Sketch)  │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  Relay Control    │  digitalWrite(GPIO13, HIGH)
+│                   │  Start timer: 300 seconds
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  Solenoid Valve   │  ⚡ ENERGIZED - Water flows
+│  Physical Device  │  🚰 Irrigation active
+└───────────────────┘
+          │
+          │ (After 300 seconds)
+          ▼
+┌───────────────────┐
+│  Auto-Shutoff     │  digitalWrite(GPIO13, LOW)
+│  Timer Expired    │
+└─────────┬─────────┘
+          │
+          ▼
+┌───────────────────┐
+│  LoRa Response    │  Response: "AUTO_OFF:VALVE_1"
+│  To RPI           │
+└─────────┬─────────┘
+          │ LoRa Radio
+          ▼
+┌───────────────────┐
+│  Database Log     │  Update irrigation_log table
+│  Status Update    │  Record end time
+└───────────────────┘
+```
+
+## Component Communication
+
+```
+                    Raspberry Pi
+    ┌────────────────────────────────────────┐
+    │                                        │
+    │  ┌──────────────────────────────────┐  │
+    │  │      Flask Application           │  │
+    │  │  - Web Routes                    │  │
+    │  │  - Irrigation Scheduler          │  │
+    │  │  - Database Management           │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │    hardware_lora.py              │  │
+    │  │  - Hardware Abstraction          │  │
+    │  │  - Zone Control API              │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │    lora_controller.py            │  │
+    │  │  - LoRa Protocol Handler         │  │
+    │  │  - Command/Response Parser       │  │
+    │  │  - Signal Quality Monitor        │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │    RFM95 LoRa Module             │  │
+    │  │  - SPI Interface                 │  │
+    │  │  - RF Transceiver                │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │ Antenna              │
+    └─────────────────┼──────────────────────┘
+                      │
+                   ═══╪═══  LoRa Radio Link
+                      │     (Up to 2 km range)
+                      │
+    ┌─────────────────┼──────────────────────┐
+    │                 │ Antenna              │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │    RFM95 LoRa Module             │  │
+    │  │  - SPI Interface                 │  │
+    │  │  - RF Transceiver                │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │  Arduino Firmware                │  │
+    │  │  - Command Parser                │  │
+    │  │  - Valve Control Logic           │  │
+    │  │  - Auto-shutoff Timers           │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │  ┌──────────────▼───────────────────┐  │
+    │  │  GPIO Pins (13,12,27,26)         │  │
+    │  └──────────────┬───────────────────┘  │
+    │                 │                      │
+    │                ESP32                   │
+    └─────────────────┼──────────────────────┘
+                      │
+    ┌─────────────────┼──────────────────────┐
+    │  ┌──────────────▼───────────────────┐  │
+    │  │    4-Channel Relay Module        │  │
+    │  │  IN1  IN2  IN3  IN4              │  │
+    │  └───┬────┬────┬────┬───────────────┘  │
+    │      │    │    │    │                  │
+    │  ┌───▼┐ ┌─▼─┐ ┌─▼─┐ ┌▼──┐             │
+    │  │ R1 │ │R2 │ │R3 │ │R4 │             │
+    │  └───┬┘ └─┬─┘ └─┬─┘ └┬──┘             │
+    │      │    │    │    │                  │
+    └──────┼────┼────┼────┼──────────────────┘
+           │    │    │    │
+      ┌────▼┐ ┌─▼──┐ ┌▼──┐ ┌▼──┐
+      │Sol1│ │Sol2│ │Sol3│ │Sol4│
+      │12V │ │12V │ │12V │ │12V │
+      └────┘ └────┘ └───┘ └───┘
+       Zone1  Zone2  Zone3 Zone4
+```
+
+## Safety and Reliability Features
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    SAFETY LAYERS                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Layer 1: AUTO-SHUTOFF TIMERS (ESP32)                      │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ • Each valve has independent timer                 │    │
+│  │ • Automatically turns off after specified duration │    │
+│  │ • Prevents stuck-open condition                    │    │
+│  └────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Layer 2: COMMAND ACKNOWLEDGMENT                           │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ • Every command gets response (OK/ERROR)           │    │
+│  │ • Status verification after command                │    │
+│  │ • Retry logic on failure                           │    │
+│  └────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Layer 3: CONNECTION MONITORING                            │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ • Periodic ping checks                             │    │
+│  │ • Signal quality monitoring (RSSI/SNR)            │    │
+│  │ • Alert on connection loss                         │    │
+│  └────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Layer 4: EMERGENCY STOP                                   │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ • ALL_OFF command turns off all valves            │    │
+│  │ • Accessible from web interface                    │    │
+│  │ • Fast response priority                           │    │
+│  └────────────────────────────────────────────────────┘    │
+│                                                             │
+│  Layer 5: HARDWARE PROTECTION                              │
+│  ┌────────────────────────────────────────────────────┐    │
+│  │ • Flyback diodes on solenoid valves               │    │
+│  │ • Fuses on power lines                             │    │
+│  │ • Weatherproof enclosures                          │    │
+│  └────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## File Organization
+
+```
+irrigacion/
+│
+├── ESP32/                          ← ESP32-specific files
+│   ├── esp32_lora_irrigation.ino  ← Arduino sketch
+│   ├── README.md                   ← Quick reference
+│   ├── SETUP_GUIDE.md             ← Complete setup
+│   ├── WIRING_DIAGRAMS.md         ← Pin connections
+│   ├── INSTALLATION_CHECKLIST.md  ← Step-by-step checklist
+│   ├── IMPLEMENTATION_SUMMARY.md  ← What was created
+│   └── integration_example.py     ← Python examples
+│
+├── app/
+│   ├── lora_controller.py         ← LoRa driver (NEW)
+│   ├── hardware_lora.py           ← Hardware abstraction (NEW)
+│   ├── hardware.py                ← Original GPIO control
+│   ├── config.py                  ← Updated with LoRa settings
+│   ├── routes.py                  ← Added /hardware/status
+│   ├── irrigation.py              ← Existing irrigation logic
+│   ├── scheduler.py               ← Existing scheduler
+│   └── ...
+│
+├── scripts/
+│   ├── test_lora.py               ← Test suite (NEW)
+│   ├── install_lora.sh            ← Auto-install script (NEW)
+│   └── ...
+│
+├── requirements.txt                ← Updated with LoRa libs
+├── ESP32_QUICKSTART.md            ← Start here!
+└── run.py                         ← Flask entry point
+```
+
+## Upgrade Path
+
+```
+┌──────────────────────────────────────────────────────┐
+│  BEFORE: Direct GPIO Control                         │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│   Raspberry Pi ──────► GPIO Pins ──────► Relays    │
+│                         (3 zones)                    │
+│                         Limited range: 1-2 meters    │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+                         │
+                         │ UPGRADE
+                         ▼
+┌──────────────────────────────────────────────────────┐
+│  AFTER: LoRa Wireless Control                       │
+├──────────────────────────────────────────────────────┤
+│                                                      │
+│   Raspberry Pi ──► LoRa Radio ─┐                    │
+│                                 │                    │
+│                    (Up to 2 km) │                    │
+│                                 │                    │
+│                                 ▼                    │
+│               ESP32 + LoRa ──► Relays ──► 4 Valves │
+│                                                      │
+│   ✅ Long range                                     │
+│   ✅ 4 zones instead of 3                          │
+│   ✅ Auto-shutoff timers                           │
+│   ✅ Signal quality monitoring                     │
+│   ✅ Same API - no code changes!                   │
+│                                                      │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+Generated: 2026-02-24
+System: ESP32 LoRa Irrigation Control
+Version: 1.0
+

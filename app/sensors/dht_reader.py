@@ -1,5 +1,5 @@
 """
-Lectura DHT11 y guardado en SQLite
+Lectura DHT22 y guardado en SQLite
 """
 import time
 import sqlite3
@@ -9,7 +9,7 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parents[2] / "instance" / "irrigation.db"
 
-dht = adafruit_dht.DHT11(board.D22)
+dht = adafruit_dht.DHT22(board.D4)  # GPIO 4
 
 def save_reading(temp: float, hum: float) -> None:
     conn = sqlite3.connect(DB_PATH)
@@ -34,7 +34,7 @@ def main() -> None:
         except RuntimeError as exc:
             print(f"Lectura fallida: {exc}")
 
-        time.sleep(10)  # cada 10s (mejor para DHT11)
+        time.sleep(3)  # cada 3s (DHT22 soporta mínimo 2s)
 
 if __name__ == "__main__":
     main()

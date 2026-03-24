@@ -11,12 +11,50 @@
   </component>
   <component name="DBNavigator.Project.DatabaseAssistantManager">
     <assistants>
-      <assistant-state connection-id="e8d8e383-75f4-4a69-9ed0-42a6c0e36b54" assistant-type="SELECT_AI" default-profile-name="" selected-chat-id="" availability="UNAVAILABLE" acknowledgement="NONE" selected="true">
+      <assistant-state connection-id="e8d8e383-75f4-4a69-9ed0-42a6c0e36b54" assistant-type="PUBLIC" default-profile-name="" selected-chat-id="23EB00E99E9A4A63A01C5D2F8FA8511C" availability="AVAILABLE" acknowledgement="ENGAGED" selected="true">
+        <chats>
+          <chat id="23EB00E99E9A4A63A01C5D2F8FA8511C" title="" session-signature="" timestamp="1771242351381">
+            <messages>
+              <message id="874f335f-f294-4b61-b952-97368d64006d" type="NEUTRAL" author="USER" timestamp="1771242351381" folded="false">
+                <content><![CDATA[check my db]]></content>
+                <context provider="ANTHROPIC" profile="implicit-profile-6c7bd923-087b-4dd6-abfb-cd43301f8079" model="CLAUDE_OPUS_4_1_20250805" action="" interactive="true" />
+              </message>
+              <message id="59a79cdc-55fe-40af-b8c7-a14b0f5a16be" type="ERROR" author="SYSTEM" timestamp="1771242352204" folded="false">
+                <content><![CDATA[Failed to invoke Public LLM.
+
+Error details:
+HTTP 400: Bad Request (Request URL: https://api.anthropic.com/v1/messages)
+{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYBh6DS2TRgDi9ZCgWc4D"}]]></content>
+                <context provider="ANTHROPIC" profile="implicit-profile-6c7bd923-087b-4dd6-abfb-cd43301f8079" model="CLAUDE_OPUS_4_1_20250805" action="" interactive="true" />
+              </message>
+              <message id="77e01949-4a3f-4cb1-aa17-5deddc9ff9e5" type="NEUTRAL" author="USER" timestamp="1772486831363" folded="false">
+                <content><![CDATA[check my db]]></content>
+                <context provider="ANTHROPIC" profile="implicit-profile-6c7bd923-087b-4dd6-abfb-cd43301f8079" model="CLAUDE_OPUS_4_1_20250805" action="" interactive="true" />
+              </message>
+              <message id="aca85014-7f9d-425e-82f1-b18146701c6a" type="ERROR" author="SYSTEM" timestamp="1772486832692" folded="false">
+                <content><![CDATA[Failed to invoke Public LLM.
+
+Error details:
+HTTP 400: Bad Request (Request URL: https://api.anthropic.com/v1/messages)
+{"type":"error","error":{"type":"invalid_request_error","message":"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits."},"request_id":"req_011CYexkDuTkUUJjbLZJrzXb"}]]></content>
+                <context provider="ANTHROPIC" profile="implicit-profile-6c7bd923-087b-4dd6-abfb-cd43301f8079" model="CLAUDE_OPUS_4_1_20250805" action="" interactive="true" />
+              </message>
+            </messages>
+            <context provider="ANTHROPIC" profile="implicit-profile-6c7bd923-087b-4dd6-abfb-cd43301f8079" model="CLAUDE_OPUS_4_1_20250805" action="" interactive="true" />
+          </chat>
+        </chats>
+        <tools />
+      </assistant-state>
+      <assistant-state connection-id="e8d8e383-75f4-4a69-9ed0-42a6c0e36b54" assistant-type="SELECT_AI" default-profile-name="" selected-chat-id="" availability="UNAVAILABLE" acknowledgement="NONE">
         <tools />
       </assistant-state>
     </assistants>
     <selection-state>
-      <model-selection />
+      <model-selection>
+        <assistant type="PUBLIC">
+          <selection provider-id="ANTHROPIC" model-id="CLAUDE_OPUS_4_1_20250805" />
+        </assistant>
+      </model-selection>
     </selection-state>
   </component>
   <component name="DBNavigator.Project.DatabaseBrowserManager">
@@ -41,9 +79,7 @@
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files>
-      <object connection-id="e8d8e383-75f4-4a69-9ed0-42a6c0e36b54" object-ref="consoles/Connection" />
-    </open-files>
+    <open-files />
   </component>
   <component name="DBNavigator.Project.DatabasePrerequisiteManager">
     <prerequisites />
@@ -596,7 +632,9 @@
     </ddl-file-settings>
     <assistant-settings>
       <credential-settings>
-        <credentials />
+        <credentials>
+          <credential id="6c7bd923-087b-4dd6-abfb-cd43301f8079" name="Anthropic" user="" provider="ANTHROPIC" />
+        </credentials>
       </credential-settings>
       <profile-settings>
         <profiles />

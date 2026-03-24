@@ -1,5 +1,5 @@
 """
-Lectura DHT11 y guardado en SQLite
+Lectura DHT22 y guardado en SQLite
 """
 
 import time
@@ -9,10 +9,10 @@ import adafruit_dht
 from datetime import datetime
 
 DB_PATH = "/home/alexdev/Documents/irrigacion/instance/irrigation.db"
-DHT_PIN = board.D22
-INTERVAL = 5  # segundos
+DHT_PIN = board.D4  # GPIO 4
+INTERVAL = 3  # segundos (DHT22 soporta mínimo 2s)
 
-dht = adafruit_dht.DHT11(DHT_PIN)
+dht = adafruit_dht.DHT22(DHT_PIN)
 
 def insert_reading(temp: float, hum: float) -> None:
     conn = sqlite3.connect(DB_PATH, timeout=10)

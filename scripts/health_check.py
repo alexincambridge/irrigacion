@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Health Check Script - Irrigation System
-Checks all peripherals: relays, DHT11, pump, ESP32 LoRa, DB
+Checks all peripherals: relays, DHT22, pump, ESP32 LoRa, DB
 Run: python scripts/health_check.py
 """
 
@@ -18,7 +18,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 ZONE_PINS = {1: 23, 2: 24, 3: 25, 4: 27}
 PUMP_PIN = 17
-DHT_PIN = 22
+DHT_PIN = 4  # DHT22 on GPIO 4
 FERTILIZER_PIN = 18
 
 results = []
@@ -150,24 +150,24 @@ def main():
         print("   ⚠️  GPIO no disponible")
     print()
 
-    # ---- 3. Check DHT11 ----
-    print("🌡️  Comprobando DHT11...")
+    # ---- 3. Check DHT22 ----
+    print("🌡️  Comprobando DHT22...")
     try:
         import Adafruit_DHT
-        humidity, temperature = Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, DHT_PIN)
+        humidity, temperature = Adafruit_DHT.read_retry(Adafruit_DHT.DHT22, DHT_PIN)
         if humidity is not None and temperature is not None:
             results.append({
-                "device": "DHT11 Temp/Humedad",
+                "device": "DHT22 Temp/Humedad",
                 "type": "sensor",
                 "status": "ok",
                 "message": f"T: {temperature:.1f}°C | H: {humidity:.1f}%",
                 "detail": f"GPIO {DHT_PIN}",
                 "timestamp": datetime.now().isoformat()
             })
-            print(f"   ✅ DHT11: T={temperature:.1f}°C  H={humidity:.1f}%")
+            print(f"   ✅ DHT22: T={temperature:.1f}°C  H={humidity:.1f}%")
         else:
             results.append({
-                "device": "DHT11 Temp/Humedad",
+                "device": "DHT22 Temp/Humedad",
                 "type": "sensor",
                 "status": "error",
                 "message": "Lectura inválida (None)",
@@ -175,7 +175,7 @@ def main():
                 "timestamp": datetime.now().isoformat()
             })
             errors += 1
-            print("   ❌ DHT11: Lectura inválida")
+            print("   ❌ DHT22: Lectura inválida")
     except ImportError:
         # Fallback: check DB for recent readings
         try:
@@ -186,17 +186,17 @@ def main():
             conn.close()
             if row:
                 results.append({
-                    "device": "DHT11 Temp/Humedad",
+                    "device": "DHT22 Temp/Humedad",
                     "type": "sensor",
                     "status": "ok",
                     "message": f"T: {row[0]}°C | H: {row[1]}% (última lectura BD)",
                     "detail": f"GPIO {DHT_PIN} | Último: {row[2]}",
                     "timestamp": datetime.now().isoformat()
                 })
-                print(f"   ✅ DHT11 (vía BD): T={row[0]}°C H={row[1]}%  ({row[2]})")
+                print(f"   ✅ DHT22 (vía BD): T={row[0]}°C H={row[1]}%  ({row[2]})")
             else:
                 results.append({
-                    "device": "DHT11 Temp/Humedad",
+                    "device": "DHT22 Temp/Humedad",
                     "type": "sensor",
                     "status": "idle",
                     "message": "Sin lecturas en BD. Adafruit_DHT no instalado.",
@@ -206,7 +206,7 @@ def main():
                 print("   ⚠️  Sin lecturas y librería no disponible")
         except Exception as e:
             results.append({
-                "device": "DHT11 Temp/Humedad",
+                "device": "DHT22 Temp/Humedad",
                 "type": "sensor",
                 "status": "error",
                 "message": str(e),
@@ -214,10 +214,10 @@ def main():
                 "timestamp": datetime.now().isoformat()
             })
             errors += 1
-            print(f"   ❌ DHT11: {e}")
+            print(f"   ❌ DHT22: {e}")
     except Exception as e:
         results.append({
-            "device": "DHT11 Temp/Humedad",
+            "device": "DHT22 Temp/Humedad",
             "type": "sensor",
             "status": "error",
             "message": str(e),
@@ -225,7 +225,7 @@ def main():
             "timestamp": datetime.now().isoformat()
         })
         errors += 1
-        print(f"   ❌ DHT11: {e}")
+        print(f"   ❌ DHT22: {e}")
     print()
 
     # ---- 4. Check Fertilizer Counter ----

@@ -108,7 +108,7 @@ def init_database():
     """)
 
     # -------------------------
-    # DHT11
+    # DHT22
     # -------------------------
     cur.execute("""
         CREATE TABLE IF NOT EXISTS dht_readings (

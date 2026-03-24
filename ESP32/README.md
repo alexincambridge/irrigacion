@@ -1,17 +1,190 @@
-# ESP32 LoRa Irrigation System
+# ESP32 LoRa Irrigation Control System
 
-## Hardware Requirements
+## 🎯 Project Overview
 
-### ESP32 Module
-- ESP32 Development Board (any variant)
-- LoRa Module: SX1276/RFM95/RFM96 (915 MHz for Americas, 868 MHz for Europe)
-- 4-Channel Relay Module (5V or 3.3V compatible)
-- 4 Solenoid Valves (12V/24V depending on your system)
-- Power Supply (12V/24V for solenoids, 5V for ESP32)
+This system enables wireless control of 4 irrigation solenoid valves using LoRa communication between a Raspberry Pi and ESP32. It provides long-range (up to 2km), low-power wireless control that's perfect for remote irrigation installations.
 
-### Raspberry Pi Module
+## 📁 Files in This Directory
+
+### Arduino Code
+- **`esp32_lora_irrigation.ino`** - Main ESP32 sketch for valve control
+
+### Documentation
+- **`README.md`** - This file (quick reference)
+- **`SETUP_GUIDE.md`** - Complete step-by-step setup instructions
+- **`WIRING_DIAGRAMS.md`** - Detailed wiring schematics and pin connections
+
+### Python Integration
+- **`integration_example.py`** - Example code showing how to integrate with Flask app
+
+## 🚀 Quick Start
+
+### 1. Hardware Setup
+1. Connect LoRa module to ESP32 (see WIRING_DIAGRAMS.md)
+2. Connect relay module to ESP32
+3. Connect solenoid valves to relay module
+4. Connect LoRa module to Raspberry Pi
+
+### 2. Upload ESP32 Code
+```bash
+# Using Arduino IDE:
+# 1. Open esp32_lora_irrigation.ino
+# 2. Select Board: Tools → Board → ESP32 Dev Module
+# 3. Set frequency (915MHz or 868MHz) in code
+# 4. Upload
+```
+
+### 3. Install RPI Dependencies
+```bash
+cd /path/to/irrigacion
+pip install -r requirements.txt
+```
+
+### 4. Configure System
+Edit `app/config.py`:
+```python
+HARDWARE_MODE = 'LORA'  # Enable LoRa mode
+LORA_FREQUENCY = 915E6  # Must match ESP32
+```
+
+### 5. Test Communication
+```bash
+python3 scripts/test_lora.py
+```
+
+## 🔧 Hardware Requirements
+
+### ESP32 Side
+- ESP32 Dev Board
+- RFM95/RFM96 LoRa module (915MHz or 868MHz)
+- 4-Channel Relay Module
+- 4× Solenoid Valves (12V/24V)
+- Power supplies (12V for valves, 5V for ESP32)
+
+### Raspberry Pi Side  
 - Raspberry Pi (any model)
-- LoRa Module: SX1276/RFM95/RFM96 (same frequency as ESP32)
+- RFM95/RFM96 LoRa module (same frequency as ESP32)
+- Antenna (recommended for both sides)
+
+## 📡 Communication Protocol
+
+### Commands (RPI → ESP32)
+```
+ON:valve:duration   - Turn on valve (e.g., "ON:1:300" = valve 1 for 5 min)
+OFF:valve          - Turn off valve (e.g., "OFF:1")
+ALL_OFF            - Turn off all valves
+STATUS             - Get status of all valves
+PING               - Check if ESP32 is alive
+```
+
+### Responses (ESP32 → RPI)
+```
+OK:VALVE_X_ON      - Valve turned on successfully
+OK:VALVE_X_OFF     - Valve turned off successfully
+STATUS:1=ON,2=OFF  - Current valve states
+PONG:device_id     - Response to ping
+ERROR:message      - Command failed
+```
+
+## 💻 Python Usage
+
+### Basic Control
+```python
+from app.hardware_lora import zone_on, zone_off, get_all_zones_status
+
+# Turn on valve 1 for 5 minutes (auto-shutoff)
+zone_on(1, duration=300)
+
+# Turn off valve 2
+zone_off(2)
+
+# Get status of all valves
+status = get_all_zones_status()
+# Returns: {1: True, 2: False, 3: False, 4: False}
+```
+
+### Check Connection
+```python
+from app.hardware_lora import check_connection
+from app.lora_controller import get_lora_controller
+
+# Check if ESP32 is responding
+if check_connection():
+    print("ESP32 is online")
+
+# Get signal quality
+lora = get_lora_controller()
+quality = lora.get_signal_quality()
+print(f"Signal: {quality['rssi']} dBm, Quality: {quality['quality']}%")
+```
+
+## 🔍 Testing
+
+### Test LoRa Communication
+```bash
+# Run comprehensive test suite
+python3 scripts/test_lora.py
+
+# Monitor ESP32 Serial (Arduino IDE)
+# Tools → Serial Monitor (115200 baud)
+```
+
+## 🛠️ Troubleshooting
+
+### No Communication
+1. Check both devices use same frequency (915MHz or 868MHz)
+2. Verify LoRa module connections
+3. Ensure SPI is enabled on RPI: `sudo raspi-config`
+4. Check antenna connections
+
+### Poor Signal
+1. Add external antennas (improves range 5-10x)
+2. Check for physical obstructions
+3. Verify RSSI: should be > -110 dBm
+
+### Valves Not Working
+1. Check relay module power (5V)
+2. Verify solenoid power (12V/24V)
+3. Test relays manually (should click)
+4. Check GPIO pin assignments
+
+## 📏 Range Expectations
+
+| Environment | Expected Range |
+|-------------|---------------|
+| Clear line-of-sight | 1-2 km |
+| Urban/Suburban | 500-1000 m |
+| Indoor | 100-300 m |
+| Through walls | 50-100 m |
+
+**Tip:** Use external antennas for best range!
+
+## ✅ Pre-Installation Checklist
+
+Before deploying to field:
+
+- [ ] Both devices use same frequency
+- [ ] All tests pass (test_lora.py)
+- [ ] Relays click when activated
+- [ ] Solenoids physically tested
+- [ ] Auto-shutoff timer verified
+- [ ] Emergency stop tested
+- [ ] Range tested at site
+- [ ] Antennas properly connected
+- [ ] Weatherproof enclosures ready
+- [ ] Power supplies tested
+
+---
+
+**Ready to get started?** → Read `SETUP_GUIDE.md` for detailed instructions!
+
+**Need wiring help?** → Check `WIRING_DIAGRAMS.md` for schematics!
+
+**Want to test?** → Run `python3 scripts/test_lora.py`!
+
+💧 Happy irrigating! 🌱
+
+---
 
 ## Wiring Diagram
 
@@ -167,4 +340,5 @@ Factors affecting range:
 - Physical obstructions
 - Interference from other devices
 - Weather conditions
+
 
