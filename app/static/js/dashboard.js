@@ -7,13 +7,13 @@ console.log("🏭 Industrial Dashboard initialized");
 
 // State management
 let dailyStats = {
-  temperature: { min: null, max: null, values: [] },
-  humidity: { min: null, max: null, values: [] },
-  pressure: { min: null, max: null, values: [] },
-  solar: { min: null, max: null, values: [] },
-  waterPressure: { min: null, max: null, values: [] },
-  ph: { min: null, max: null, values: [] },
-  ec: { min: null, max: null, values: [] }
+  temperature: { min: null, max: null },
+  humidity: { min: null, max: null },
+  pressure: { min: null, max: null },
+  solar: { min: null, max: null },
+  waterPressure: { min: null, max: null },
+  ph: { min: null, max: null },
+  ec: { min: null, max: null }
 };
 
 let gauges = {};
@@ -22,40 +22,13 @@ let visibleSensors = ['temp', 'humidity', 'pressure', 'solar'];
 
 // Criticality thresholds
 const thresholds = {
-  temperature: {
-    critical: { min: 5, max: 40 },
-    warning: { min: 10, max: 35 },
-    normal: { min: 15, max: 30 }
-  },
-  humidity: {
-    critical: { min: 20, max: 90 },
-    warning: { min: 30, max: 80 },
-    normal: { min: 40, max: 70 }
-  },
-  pressure: {
-    critical: { min: 980, max: 1040 },
-    warning: { min: 990, max: 1030 },
-    normal: { min: 1000, max: 1020 }
-  },
-  solar: {
-    warning: { max: 800 },
-    critical: { max: 1000 }
-  },
-  waterPressure: {
-    critical: { min: 0.5, max: 6 },
-    warning: { min: 1, max: 5 },
-    normal: { min: 1.5, max: 4 }
-  },
-  ph: {
-    critical: { min: 5.5, max: 8.5 },
-    warning: { min: 6, max: 8 },
-    normal: { min: 6.5, max: 7.5 }
-  },
-  ec: {
-    critical: { min: 0.5, max: 2.5 },
-    warning: { min: 0.8, max: 2 },
-    normal: { min: 1, max: 1.8 }
-  }
+  temperature: { critical: { min: 5, max: 40 }, warning: { min: 10, max: 35 }, normal: { min: 15, max: 30 } },
+  humidity:    { critical: { min: 20, max: 90 }, warning: { min: 30, max: 80 }, normal: { min: 40, max: 70 } },
+  pressure:    { critical: { min: 980, max: 1040 }, warning: { min: 990, max: 1030 }, normal: { min: 1000, max: 1020 } },
+  solar:       { critical: { max: 1000 }, warning: { max: 800 } },
+  waterPressure: { critical: { min: 0.5, max: 6 }, warning: { min: 1, max: 5 }, normal: { min: 1.5, max: 4 } },
+  ph:          { critical: { min: 5.5, max: 8.5 }, warning: { min: 6, max: 8 }, normal: { min: 6.5, max: 7.5 } },
+  ec:          { critical: { min: 0.5, max: 2.5 }, warning: { min: 0.8, max: 2 }, normal: { min: 1, max: 1.8 } }
 };
 
 // Color schemes for criticality
@@ -65,40 +38,46 @@ const colors = {
   critical: ['#ef4444', '#dc2626']
 };
 
-// Initialize dashboard
+// ========================================
+// INITIALIZATION
+// ========================================
+
 document.addEventListener('DOMContentLoaded', function() {
   initializeGauges();
   initializeChart();
-  loadDashboardData(); // Carga inicial
+  loadDashboardData();
   loadHistoricalData();
-  setInterval(refresh, 5000);
-
-  // Reset daily stats at midnight
+  setInterval(function() {
+    loadDashboardData();
+    loadHistoricalData();
+  }, 5000);
   scheduleResetDailyStats();
 });
 
 // ========================================
-// GAUGE INITIALIZATION
+// GAUGE CREATION
 // ========================================
 
-function refresh() {
-  loadDashboardData();
-  loadHistoricalData();
+function initializeGauges() {
+  gauges.temp = createGauge('tempGauge', { min: 0, max: 50, unit: '°C', type: 'temperature', height: 120 });
+  gauges.humidity = createGauge('humGauge', { min: 0, max: 100, unit: '%', type: 'humidity', height: 120 });
+  gauges.pressure = createGauge('pressureGauge', { min: 950, max: 1050, unit: 'hPa', type: 'pressure', height: 120 });
+  gauges.solar = createGauge('solarGauge', { min: 0, max: 1200, unit: 'W/m²', type: 'solar', height: 120 });
+  gauges.waterPressure = createGauge('waterPressureGauge', { min: 0, max: 8, unit: 'bar', type: 'waterPressure', height: 120 });
+  gauges.ph = createGauge('phGauge', { min: 0, max: 14, unit: 'pH', type: 'ph', height: 120 });
+  gauges.ec = createGauge('ecGauge', { min: 0, max: 4, unit: 'mS', type: 'ec', height: 120 });
+  console.log("✓ Gauges initialized");
 }
 
 function createGauge(elementId, config) {
-  const element = document.querySelector(`#${elementId}`);
+  var element = document.querySelector('#' + elementId);
   if (!element) return null;
 
-  const options = {
+  var options = {
     chart: {
       type: 'radialBar',
       height: config.height || 280,
-      animations: {
-        enabled: true,
-        easing: 'easeinout',
-        speed: 800
-      }
+      animations: { enabled: true, easing: 'easeinout', speed: 800 }
     },
     series: [0],
     colors: [colors.normal[0]],
@@ -106,15 +85,8 @@ function createGauge(elementId, config) {
       radialBar: {
         startAngle: -135,
         endAngle: 135,
-        hollow: {
-          size: '65%',
-          background: 'transparent'
-        },
-        track: {
-          background: '#f1f5f9',
-          strokeWidth: '100%',
-          margin: 5
-        },
+        hollow: { size: '65%', background: 'transparent' },
+        track: { background: '#f1f5f9', strokeWidth: '100%', margin: 5 },
         dataLabels: {
           name: {
             fontSize: config.height === 120 ? '11px' : '14px',
@@ -127,8 +99,8 @@ function createGauge(elementId, config) {
             color: '#1f2937',
             offsetY: 2,
             formatter: function(val) {
-              const actual = (val / 100) * (config.max - config.min) + config.min;
-              return actual.toFixed(config.type === 'ec' || config.type === 'ph' ? 1 : 1);
+              var actual = (val / 100) * (config.max - config.min) + config.min;
+              return actual.toFixed(1);
             }
           }
         }
@@ -144,204 +116,32 @@ function createGauge(elementId, config) {
         stops: [0, 100]
       }
     },
-    stroke: {
-      lineCap: 'round'
-    },
+    stroke: { lineCap: 'round' },
     labels: [config.unit]
   };
 
-  const gauge = new ApexCharts(element, options);
-  gauge.render();
-
-  return { chart: gauge, config: config };
+  var chart = new ApexCharts(element, options);
+  chart.render();
+  return { chart: chart, config: config };
 }
 
 // ========================================
-// GAUGE INITIALIZATION
+// DATA LOADING
 // ========================================
 
 async function loadDashboardData() {
   try {
-    const response = await fetch('/dashboard/data');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
+    var response = await fetch('/dashboard/data');
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    var data = await response.json();
 
-    // Update gauges with new data
-    updateGauge('temp', data.dht_temperature);
-    updateGauge('humidity', data.dht_humidity);
-    updateGauge('pressure', data.pressure);
-    updateGauge('solar', data.solar);
-    updateGauge('waterPressure', data.water_pressure);
-    updateGauge('ph', data.ph);
-    updateGauge('ec', data.ec);
-
-  } catch (error) {
-    console.error("Error loading dashboard data:", error);
-  }
-}
-
-function initializeChart() {
-  const element = document.querySelector('#historyChart');
-  if (!element) return;
-
-  const options = {
-    chart: {
-      type: 'line',
-      height: 350,
-      animations: {
-        enabled: true
-      },
-      toolbar: {
-        show: true,
-        tools: {
-          download: true,
-          zoom: true,
-          pan: true
-        }
-      }
-    },
-    series: [
-      { name: 'Temperatura (°C)', data: [], color: '#ef4444' },
-      { name: 'Humedad (%)', data: [], color: '#3b82f6' },
-      { name: 'Presión (hPa)', data: [], color: '#8b5cf6' },
-      { name: 'Solar (W/m²)', data: [], color: '#f59e0b' }
-    ],
-    stroke: {
-      width: 3,
-      curve: 'smooth'
-    },
-    xaxis: {
-      categories: [],
-      labels: {
-        rotate: -45,
-        style: {
-          fontSize: '11px'
-        }
-      }
-    },
-    yaxis: [
-      {
-        title: { text: 'Temp/Hum' },
-        labels: { formatter: val => val.toFixed(1) }
-      },
-      {
-        opposite: true,
-        title: { text: 'Presión/Solar' },
-        labels: { formatter: val => val.toFixed(0) }
-      }
-    ],
-    legend: {
-      position: 'top',
-      horizontalAlign: 'center'
-    },
-    grid: {
-      borderColor: '#e5e7eb',
-      strokeDashArray: 4
-    },
-    tooltip: {
-      shared: true,
-      intersect: false,
-      y: {
-        formatter: function(val, opts) {
-          if (val === null || val === undefined) return 'N/A';
-          return val.toFixed(1);
-        }
-      }
-    }
-  };
-
-  historyChart = new ApexCharts(element, options);
-  historyChart.render();
-
-  console.log("✓ Chart initialized");
-}
-
-// Load historical data from server
-async function loadHistoricalData() {
-  try {
-    const response = await fetch('/dashboard/history');
-    if (!response.ok) {
-      console.error('Failed to load historical data');
-      return;
-    }
-
-    const data = await response.json();
-    if (!data || data.length === 0) {
-      console.log('No historical data available');
-      return;
-    }
-
-    // Separar datos por sensor
-    const tempData = [];
-    const humData = [];
-    const presData = [];
-    const solData = [];
-    const labels = [];
-
-    data.forEach(record => {
-      // Extraer la hora del timestamp
-      const time = new Date(record.timestamp).toLocaleTimeString('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      labels.push(time);
-
-      tempData.push(record.temperature || null);
-      humData.push(record.humidity || null);
-      presData.push(record.pressure || null);
-      solData.push(record.solar || null);
-    });
-
-    // Actualizar el gráfico
-    if (historyChart) {
-      historyChart.updateOptions({
-        series: [
-          { name: 'Temperatura (°C)', data: tempData, color: '#ef4444' },
-          { name: 'Humedad (%)', data: humData, color: '#3b82f6' },
-          { name: 'Presión (hPa)', data: presData, color: '#8b5cf6' },
-          { name: 'Solar (W/m²)', data: solData, color: '#f59e0b' }
-        ],
-        xaxis: {
-          categories: labels
-        }
-      }, false);
-
-      historyChart.render();
-      console.log(`✓ Chart updated with ${data.length} records`);
-    }
-
-  } catch (error) {
-    console.error('Error loading historical data:', error);
-  }
-}
-
-// ========================================
-// DATA REFRESH
-// ========================================
-
-function refresh() {
-  loadDashboardData();
-  loadHistoricalData();
-}
-
-async function loadDashboardData() {
-  try {
-    const response = await fetch('/dashboard/data');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-
-    // Update gauges with new data
-    updateGauge('temp', data.dht_temperature);
-    updateGauge('humidity', data.dht_humidity);
-    updateGauge('pressure', data.pressure);
-    updateGauge('solar', data.solar);
-    updateGauge('waterPressure', data.water_pressure);
-    updateGauge('ph', data.ph);
-    updateGauge('ec', data.ec);
+    updateGauge('temp', data.dht_temperature, 'temperature');
+    updateGauge('humidity', data.dht_humidity, 'humidity');
+    updateGauge('pressure', data.pressure, 'pressure');
+    updateGauge('solar', data.solar, 'solar');
+    updateGauge('waterPressure', data.water_pressure, 'waterPressure');
+    updateGauge('ph', data.ph, 'ph');
+    updateGauge('ec', data.ec, 'ec');
 
   } catch (error) {
     console.error("Error loading dashboard data:", error);
@@ -349,151 +149,45 @@ async function loadDashboardData() {
 }
 
 // ========================================
-// UPDATE FUNCTIONS
+// GAUGE UPDATE
 // ========================================
 
-function updateGauge(gaugeName, value) {
-  const gauge = gauges[gaugeName];
-  if (!gauge) return;
+function updateGauge(gaugeName, value, type) {
+  var gaugeObj = gauges[gaugeName];
+  if (!gaugeObj || !gaugeObj.chart) return;
 
-  const config = gauge.w.config.chart;
-  const type = config.type;
+  var config = gaugeObj.config;
 
-  // Handle null or undefined values
+  // Handle null/undefined
   if (value === null || typeof value === 'undefined') {
-    gauge.updateSeries([0]);
-    // Optionally, display 'N/A' or similar
+    gaugeObj.chart.updateSeries([0]);
     return;
   }
 
-  // Update daily stats
-  const stats = dailyStats[type];
-  if (stats) {
-    if (stats.min === null || value < stats.min) stats.min = value;
-    if (stats.max === null || value > stats.max) stats.max = value;
+  var numValue = Number(value);
 
-    // Update min/max display
-    const minEl = document.querySelector(`#${gaugeName}Min`);
-    const maxEl = document.querySelector(`#${gaugeName}Max`);
-    if (minEl) minEl.textContent = `Min: ${stats.min.toFixed(1)}`;
-    if (maxEl) maxEl.textContent = `Max: ${stats.max.toFixed(1)}`;
+  // Update daily min/max stats
+  var stats = dailyStats[type];
+  if (stats) {
+    if (stats.min === null || numValue < stats.min) stats.min = numValue;
+    if (stats.max === null || numValue > stats.max) stats.max = numValue;
+
+    // Update min/max display elements
+    var minEl = document.getElementById(gaugeName + 'Min');
+    var maxEl = document.getElementById(gaugeName + 'Max');
+    if (minEl) minEl.textContent = 'Min: ' + stats.min.toFixed(1);
+    if (maxEl) maxEl.textContent = 'Max: ' + stats.max.toFixed(1);
   }
 
   // Calculate percentage for radial bar
-  const min = gauge.w.config.chart.min;
-  const max = gauge.w.config.chart.max;
-  const percentage = ((value - min) / (max - min)) * 100;
+  var percentage = ((numValue - config.min) / (config.max - config.min)) * 100;
+  percentage = Math.min(100, Math.max(0, percentage));
 
-  gauge.updateSeries([percentage]);
+  gaugeObj.chart.updateSeries([percentage]);
 
   // Update color based on criticality
-  const newColor = getCriticalityColor(type, value);
-  gauge.updateOptions({
-    colors: [newColor[0]],
-    fill: {
-      gradient: {
-        stops: [0, 100],
-        colorStops: [
-          { offset: 0, color: newColor[0], opacity: 1 },
-          { offset: 100, color: newColor[1], opacity: 1 }
-        ]
-      }
-    }
-  });
-}
-
-function updateTemperature(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('temperature', numValue);
-
-  // Update gauge
-  const percentage = ((numValue - 0) / (50 - 0)) * 100;
-  const criticality = getCriticality('temperature', numValue);
-  updateGauge('temp', percentage, criticality);
-
-  // Update KPI
-  document.getElementById('kpiTemp').textContent = `${numValue.toFixed(1)}°C`;
-  updateKpiRange('temperature', numValue);
-  updateStatusBadge('tempStatus', criticality);
-
-  // Update trend
-  updateTrend('tempTrend', dailyStats.temperature.values);
-}
-
-function updateHumidity(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('humidity', numValue);
-
-  // Update gauge
-  const percentage = numValue;
-  const criticality = getCriticality('humidity', numValue);
-  updateGauge('humidity', percentage, criticality);
-
-  // Update KPI
-  document.getElementById('kpiHum').textContent = `${numValue.toFixed(1)}%`;
-  updateKpiRange('humidity', numValue);
-  updateStatusBadge('humStatus', criticality);
-
-  // Update trend
-  updateTrend('humTrend', dailyStats.humidity.values);
-}
-
-function updatePressure(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('pressure', numValue);
-
-  // Update gauge
-  const percentage = ((numValue - 950) / (1050 - 950)) * 100;
-  const criticality = getCriticality('pressure', numValue);
-  updateGauge('pressure', percentage, criticality);
-
-  // Update KPI
-  document.getElementById('kpiPressure').textContent = `${numValue.toFixed(1)} hPa`;
-  updateKpiRange('pressure', numValue);
-  updateStatusBadge('pressureStatus', criticality);
-
-  // Update trend
-  updateTrend('pressureTrend', dailyStats.pressure.values);
-}
-
-function updateSolar(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('solar', numValue);
-
-  // Update gauge
-  const percentage = (numValue / 1200) * 100;
-  const criticality = getCriticality('solar', numValue);
-  updateGauge('solar', percentage, criticality);
-
-  // Update KPI
-  document.getElementById('kpiSolar').textContent = `${numValue.toFixed(0)} W/m²`;
-  updateKpiRange('solar', numValue);
-  updateStatusBadge('solarStatus', criticality);
-
-  // Update trend
-  updateTrend('solarTrend', dailyStats.solar.values);
-}
-
-// ========================================
-// GAUGE UPDATE WITH COLOR CHANGE
-// ========================================
-
-function updateGauge(type, percentage, criticality) {
-  const gauge = gauges[type];
-  if (!gauge || !gauge.chart) return;
-
-  // Update colors based on criticality
-  const gaugeColors = colors[criticality];
-
-  gauge.chart.updateOptions({
+  var gaugeColors = getCriticalityColor(type, numValue);
+  gaugeObj.chart.updateOptions({
     colors: [gaugeColors[0]],
     fill: {
       gradient: {
@@ -502,181 +196,121 @@ function updateGauge(type, percentage, criticality) {
     }
   });
 
-  // Update value
-  gauge.chart.updateSeries([Math.min(100, Math.max(0, percentage))]);
+  // Update status badge
+  var badgeId = gaugeName === 'temp' ? 'tempStatus' :
+                gaugeName === 'humidity' ? 'humStatus' :
+                gaugeName + 'Status';
+  var badge = document.getElementById(badgeId);
+  if (badge) {
+    var crit = getCriticality(type, numValue);
+    badge.className = 'gauge-status-badge ' + crit;
+    badge.textContent = crit.toUpperCase();
+  }
 }
 
 // ========================================
-// CRITICALITY CALCULATION
+// CRITICALITY
 // ========================================
 
 function getCriticality(type, value) {
-  const threshold = thresholds[type];
-  if (!threshold) return 'normal';
+  var t = thresholds[type];
+  if (!t) return 'normal';
 
-  // Temperature, Humidity, Pressure (range-based)
-  if (threshold.critical && threshold.warning) {
-    if (value < threshold.critical.min || value > threshold.critical.max) {
+  if (t.critical) {
+    if ((t.critical.min !== undefined && value < t.critical.min) ||
+        (t.critical.max !== undefined && value > t.critical.max)) {
       return 'critical';
     }
-    if (value < threshold.warning.min || value > threshold.warning.max) {
+  }
+  if (t.warning) {
+    if ((t.warning.min !== undefined && value < t.warning.min) ||
+        (t.warning.max !== undefined && value > t.warning.max)) {
       return 'warning';
     }
-    return 'normal';
   }
-
-  // Solar (max-only based)
-  if (type === 'solar') {
-    if (value > threshold.critical.max) return 'critical';
-    if (value > threshold.warning.max) return 'warning';
-    return 'normal';
-  }
-
   return 'normal';
 }
 
+function getCriticalityColor(type, value) {
+  var crit = getCriticality(type, value);
+  return colors[crit] || colors.normal;
+}
+
 // ========================================
-// DAILY STATS TRACKING
+// HISTORICAL CHART
 // ========================================
 
-function updateDailyStats(type, value) {
-  const stats = dailyStats[type];
-
-  // Add to values array
-  stats.values.push(value);
-  if (stats.values.length > 20) {
-    stats.values.shift(); // Keep last 20 values
-  }
-
-  // Update min/max
-  if (stats.min === null || value < stats.min) {
-    stats.min = value;
-  }
-  if (stats.max === null || value > stats.max) {
-    stats.max = value;
-  }
-}
-
-function updateKpiRange(type, currentValue) {
-  const stats = dailyStats[type];
-  const minEl = document.getElementById(`${type}Min`);
-  const maxEl = document.getElementById(`${type}Max`);
-
-  if (minEl && stats.min !== null) {
-    minEl.textContent = `Min: ${stats.min.toFixed(1)}`;
-  }
-
-  if (maxEl && stats.max !== null) {
-    maxEl.textContent = `Max: ${stats.max.toFixed(1)}`;
-  }
-}
-
-function updateTrend(elementId, values) {
-  const element = document.getElementById(elementId);
-  if (!element || values.length < 2) return;
-
-  const recent = values.slice(-5);
-  const trend = recent[recent.length - 1] - recent[0];
-
-  if (Math.abs(trend) < 0.1) {
-    element.textContent = '→';
-    element.style.color = '#6b7280';
-  } else if (trend > 0) {
-    element.textContent = '↗';
-    element.style.color = '#ef4444';
-  } else {
-    element.textContent = '↘';
-    element.style.color = '#3b82f6';
-  }
-}
-
-function updateWaterPressure(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('waterPressure', numValue);
-
-  // Update gauge
-  const percentage = ((numValue - 0) / (8 - 0)) * 100;
-  const criticality = getCriticality('waterPressure', numValue);
-  updateGauge('waterPressure', percentage, criticality);
-
-  // Update status badge
-  updateStatusBadge('waterPressureStatus', criticality);
-}
-
-function updatePH(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('ph', numValue);
-
-  // Update gauge
-  const percentage = ((numValue - 0) / (14 - 0)) * 100;
-  const criticality = getCriticality('ph', numValue);
-  updateGauge('ph', percentage, criticality);
-
-  // Update status badge
-  updateStatusBadge('phStatus', criticality);
-}
-
-function updateEC(value) {
-  if (value === null || value === undefined) return;
-
-  const numValue = Number(value);
-  updateDailyStats('ec', numValue);
-
-  // Update gauge
-  const percentage = ((numValue - 0) / (4 - 0)) * 100;
-  const criticality = getCriticality('ec', numValue);
-  updateGauge('ec', percentage, criticality);
-
-  // Update status badge
-  updateStatusBadge('ecStatus', criticality);
-}
-
-function updateStatusBadge(elementId, criticality) {
-  const element = document.getElementById(elementId);
+function initializeChart() {
+  var element = document.querySelector('#historyChart');
   if (!element) return;
 
-  element.className = 'gauge-status-badge ' + criticality;
-  element.textContent = criticality.toUpperCase();
+  var options = {
+    chart: {
+      type: 'line',
+      height: 350,
+      animations: { enabled: true },
+      toolbar: { show: true, tools: { download: true, zoom: true, pan: true } }
+    },
+    series: [
+      { name: 'Temperatura (°C)', data: [], color: '#ef4444' },
+      { name: 'Humedad (%)', data: [], color: '#3b82f6' },
+      { name: 'Presión (hPa)', data: [], color: '#8b5cf6' },
+      { name: 'Solar (W/m²)', data: [], color: '#f59e0b' }
+    ],
+    stroke: { width: 3, curve: 'smooth' },
+    xaxis: {
+      categories: [],
+      labels: { rotate: -45, style: { fontSize: '11px' } }
+    },
+    yaxis: [
+      { title: { text: 'Temp/Hum' }, labels: { formatter: function(v) { return v ? v.toFixed(1) : ''; } } },
+      { opposite: true, title: { text: 'Presión/Solar' }, labels: { formatter: function(v) { return v ? v.toFixed(0) : ''; } } }
+    ],
+    legend: { position: 'top', horizontalAlign: 'center' },
+    grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
+    tooltip: {
+      shared: true, intersect: false,
+      y: { formatter: function(v) { return (v === null || v === undefined) ? 'N/A' : v.toFixed(1); } }
+    }
+  };
+
+  historyChart = new ApexCharts(element, options);
+  historyChart.render();
+  console.log("✓ Chart initialized");
 }
 
-// ========================================
-// SYSTEM STATUS
-// ========================================
+async function loadHistoricalData() {
+  try {
+    var response = await fetch('/dashboard/history');
+    if (!response.ok) return;
+    var data = await response.json();
+    if (!data || data.length === 0) return;
 
-function updateSystemStatus() {
-  const lastReading = document.getElementById('lastReading');
-  if (lastReading) {
-    lastReading.textContent = 'Hace 5s';
-  }
+    var labels = [], tempData = [], humData = [], presData = [], solData = [];
 
-  // Check overall system criticality
-  const hasWarning = Object.keys(dailyStats).some(type => {
-    const value = dailyStats[type].values[dailyStats[type].values.length - 1];
-    return value && getCriticality(type, value) === 'warning';
-  });
+    data.forEach(function(record) {
+      var time = new Date(record.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      labels.push(time);
+      tempData.push(record.temperature || null);
+      humData.push(record.humidity || null);
+      presData.push(record.pressure || null);
+      solData.push(record.solar || null);
+    });
 
-  const hasCritical = Object.keys(dailyStats).some(type => {
-    const value = dailyStats[type].values[dailyStats[type].values.length - 1];
-    return value && getCriticality(type, value) === 'critical';
-  });
-
-  const statusEl = document.getElementById('gaugeStatus');
-  if (statusEl) {
-    if (hasCritical) {
-      statusEl.textContent = 'Crítico';
-      statusEl.style.color = '#ef4444';
-      showAlert('⚠️ Valores críticos detectados en sensores', 'warning');
-    } else if (hasWarning) {
-      statusEl.textContent = 'Alerta';
-      statusEl.style.color = '#f59e0b';
-    } else {
-      statusEl.textContent = 'Normal';
-      statusEl.style.color = '#22c55e';
+    if (historyChart) {
+      historyChart.updateOptions({
+        series: [
+          { name: 'Temperatura (°C)', data: tempData, color: '#ef4444' },
+          { name: 'Humedad (%)', data: humData, color: '#3b82f6' },
+          { name: 'Presión (hPa)', data: presData, color: '#8b5cf6' },
+          { name: 'Solar (W/m²)', data: solData, color: '#f59e0b' }
+        ],
+        xaxis: { categories: labels }
+      }, false);
+      historyChart.render();
     }
+  } catch (error) {
+    console.error('Error loading historical data:', error);
   }
 }
 
@@ -685,72 +319,48 @@ function updateSystemStatus() {
 // ========================================
 
 function toggleSensor(sensor) {
-  const index = visibleSensors.indexOf(sensor);
+  var index = visibleSensors.indexOf(sensor);
   if (index > -1) {
     visibleSensors.splice(index, 1);
   } else {
     visibleSensors.push(sensor);
   }
-
-  // Update button states
-  const buttons = document.querySelectorAll('.chart-btn');
-  buttons.forEach(btn => {
-    const sensor = btn.textContent.toLowerCase().includes('temperatura') ? 'temp' :
-                   btn.textContent.toLowerCase().includes('humedad') ? 'humidity' :
-                   btn.textContent.toLowerCase().includes('presión') ? 'pressure' : 'solar';
-
-    if (visibleSensors.includes(sensor)) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-
-  // Refresh chart would go here
 }
 
 // ========================================
 // UTILITIES
 // ========================================
 
-function showAlert(message, type = 'warning') {
-  const banner = document.getElementById('alertBanner');
-  const messageEl = document.getElementById('alertMessage');
-
+function showAlert(message, type) {
+  var banner = document.getElementById('alertBanner');
+  var messageEl = document.getElementById('alertMessage');
   if (banner && messageEl) {
     messageEl.textContent = message;
     banner.style.display = 'block';
-
-    setTimeout(() => {
-      banner.style.display = 'none';
-    }, 5000);
+    setTimeout(function() { banner.style.display = 'none'; }, 5000);
   }
 }
 
 function closeAlert() {
-  const banner = document.getElementById('alertBanner');
-  if (banner) {
-    banner.style.display = 'none';
-  }
+  var banner = document.getElementById('alertBanner');
+  if (banner) banner.style.display = 'none';
 }
 
 function scheduleResetDailyStats() {
-  const now = new Date();
-  const tomorrow = new Date(now);
+  var now = new Date();
+  var tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(0, 0, 0, 0);
-
-  const timeUntilMidnight = tomorrow - now;
-
-  setTimeout(() => {
+  var ms = tomorrow - now;
+  setTimeout(function() {
     resetDailyStats();
-    scheduleResetDailyStats(); // Schedule next reset
-  }, timeUntilMidnight);
+    scheduleResetDailyStats();
+  }, ms);
 }
 
 function resetDailyStats() {
-  Object.keys(dailyStats).forEach(type => {
-    dailyStats[type] = { min: null, max: null, values: [] };
+  Object.keys(dailyStats).forEach(function(type) {
+    dailyStats[type] = { min: null, max: null };
   });
   console.log("📊 Daily stats reset");
 }
