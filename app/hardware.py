@@ -27,48 +27,42 @@ def _init_gpio():
         return
 
     try:
-        # Check if GPIO is already set up
-        if GPIO.getmode() is None:
-            GPIO.setmode(GPIO.BCM)
+        # Set GPIO mode if not already set
+        try:
+            if GPIO.getmode() is None:
+                GPIO.setmode(GPIO.BCM)
+        except RuntimeError:
+            # GPIO mode already set, that's fine
+            pass
 
         GPIO.setwarnings(False)
 
         # Initialize all zone pins
         for zone_id, pin in ZONE_PINS.items():
             try:
-                # Check if pin is already set up
-                state = GPIO.gpio_function(pin)
-                if state == GPIO.UNKNOWN:
-                    GPIO.setup(pin, GPIO.OUT)
-                    logger.info(f"[HW] GPIO {pin} inicializado (Zona {zone_id})")
-            except RuntimeError as e:
-                logger.warning(f"[HW] GPIO {pin} ya configurado: {e}")
-
-            # Set to LOW (safe default)
-            try:
+                # Always try to setup, RPi.GPIO handles re-setup gracefully
+                GPIO.setup(pin, GPIO.OUT)
+                # Set to LOW (safe default)
                 GPIO.output(pin, GPIO.LOW)
+                logger.info(f"[HW] ✅ GPIO {pin} inicializado (Zona {zone_id})")
             except Exception as e:
-                logger.error(f"[HW] Error al poner GPIO {pin} en LOW: {e}")
+                logger.error(f"[HW] ❌ Error inicializando GPIO {pin}: {e}")
+                continue
 
         # Initialize pump pin
         try:
-            state = GPIO.gpio_function(PUMP_PIN)
-            if state == GPIO.UNKNOWN:
-                GPIO.setup(PUMP_PIN, GPIO.OUT)
-                logger.info(f"[HW] Pump GPIO {PUMP_PIN} inicializado")
-        except RuntimeError as e:
-            logger.warning(f"[HW] Pump GPIO {PUMP_PIN} ya configurado: {e}")
-
-        try:
+            GPIO.setup(PUMP_PIN, GPIO.OUT)
+            # Set to LOW (safe default)
             GPIO.output(PUMP_PIN, GPIO.LOW)
+            logger.info(f"[HW] ✅ Pump GPIO {PUMP_PIN} inicializado")
         except Exception as e:
-            logger.error(f"[HW] Error al poner pump GPIO {PUMP_PIN} en LOW: {e}")
+            logger.error(f"[HW] ❌ Error inicializando pump GPIO {PUMP_PIN}: {e}")
 
         _gpio_initialized = True
         logger.info("[HW] ✅ GPIO inicializado correctamente")
 
     except Exception as e:
-        logger.error(f"[HW] Error inicializando GPIO: {e}")
+        logger.error(f"[HW] Error crítico inicializando GPIO: {e}")
         _gpio_initialized = False
 
 
@@ -86,6 +80,13 @@ def zone_on(zone_id, duration=0):
         return False
 
     try:
+        # Ensure pin is configured as OUTPUT
+        try:
+            GPIO.setup(pin, GPIO.OUT)
+        except RuntimeError:
+            # Already setup, that's fine
+            pass
+
         GPIO.output(pin, GPIO.HIGH)
         _active_zones.add(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} ON (GPIO {pin})")
@@ -104,6 +105,13 @@ def zone_off(zone_id):
         return False
 
     try:
+        # Ensure pin is configured as OUTPUT
+        try:
+            GPIO.setup(pin, GPIO.OUT)
+        except RuntimeError:
+            # Already setup, that's fine
+            pass
+
         GPIO.output(pin, GPIO.LOW)
         _active_zones.discard(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} OFF (GPIO {pin})")
@@ -135,6 +143,13 @@ def pump_on(duration_seconds=0):
         _pump_timer = None
 
     try:
+        # Ensure pin is configured as OUTPUT
+        try:
+            GPIO.setup(PUMP_PIN, GPIO.OUT)
+        except RuntimeError:
+            # Already setup, that's fine
+            pass
+
         GPIO.output(PUMP_PIN, GPIO.HIGH)
         _pump_active = True
         logger.info(f"[HW] ✅ Bomba peristáltica ON (GPIO {PUMP_PIN})")
@@ -164,6 +179,13 @@ def pump_off():
         _pump_timer = None
 
     try:
+        # Ensure pin is configured as OUTPUT
+        try:
+            GPIO.setup(PUMP_PIN, GPIO.OUT)
+        except RuntimeError:
+            # Already setup, that's fine
+            pass
+
         GPIO.output(PUMP_PIN, GPIO.LOW)
         _pump_active = False
         logger.info(f"[HW] ✅ Bomba peristáltica OFF")
