@@ -15,7 +15,7 @@ WATER_TIME = 5
 
 # Hardware Configuration
 # Options: 'GPIO' (direct Raspberry Pi GPIO), 'LORA' (ESP32 via LoRa), 'SIMULATION' (testing)
-HARDWARE_MODE = 'LORA'  # Change to 'GPIO' for direct control or 'SIMULATION' for testing
+HARDWARE_MODE = 'GPIO'  # Change to 'LORA' for ESP32 control or 'SIMULATION' for testing
 
 # LoRa Configuration (if HARDWARE_MODE = 'LORA')
 LORA_FREQUENCY = 915E6  # 915 MHz for US/Americas, 868E6 for Europe/Asia

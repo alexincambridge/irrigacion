@@ -157,7 +157,7 @@ def apply_fertilizer():
 
     try:
         # Activate zone 4 (irrigation valve)
-        from app.hardware import zone_on as hw_zone_on, pump_on as hw_pump_on
+        from app.hardware_manager import zone_on as hw_zone_on, pump_on as hw_pump_on
 
         success_zone = hw_zone_on(ZONE_ID, duration_seconds)
         success_pump = hw_pump_on(duration_seconds)
@@ -372,7 +372,7 @@ def schedule_delete(schedule_id):
 @login_required
 def irrigation_manual(sector):
 
-    from app.hardware import zone_on, zone_off, zone_state
+    from app.hardware_manager import zone_on, zone_off, zone_state
 
     db = get_db()
 
@@ -450,7 +450,7 @@ def delete_schedule(schedule_id):
 @login_required
 def zones_status():
     try:
-        from app.hardware import zone_state
+        from app.hardware_manager import zone_state
 
         zones = {}
         for zone_id in range(1, 5):  # Zones 1-4
@@ -531,7 +531,7 @@ def history_list():
 @login_required
 def emergency_stop():
     try:
-        from app.hardware import all_off
+        from app.hardware_manager import all_off
 
         all_off()
 
@@ -639,14 +639,7 @@ def irrigation_logs():
 def hardware_status():
     """Get hardware connection status and signal quality"""
     try:
-        # Import the appropriate hardware module based on config
-        from app.config import Config
-        hardware_mode = getattr(Config, 'HARDWARE_MODE', 'GPIO')
-
-        if hardware_mode == 'LORA':
-            from app.hardware_lora import get_hardware_info, check_connection
-        else:
-            from app.hardware import get_hardware_info, check_connection
+        from app.hardware_manager import get_hardware_info, check_connection
 
         info = get_hardware_info()
         info['connected'] = check_connection()
@@ -848,7 +841,7 @@ def peripherals_status():
                 # Check relay GPIO
                 gpio_pin = cfg["gpio"]
                 try:
-                    from app.hardware import zone_state, ZONE_PINS
+                    from app.hardware_manager import zone_state, ZONE_PINS
                     # Find zone_id for this pin
                     zone_id = None
                     for zid, pin in ZONE_PINS.items():
@@ -913,7 +906,7 @@ def peripherals_status():
             elif cfg["type"] == "actuator" and key == "pump":
                 # Peristaltic pump
                 try:
-                    from app.hardware import pump_state
+                    from app.hardware_manager import pump_state
                     if pump_state():
                         device["status"] = "active"
                         device["message"] = "Bomba activa (inyectando)"
@@ -987,7 +980,7 @@ def pump_on_route():
     try:
         data = request.get_json() or {}
         duration = data.get("duration", 300)  # default 5 min
-        from app.hardware import pump_on
+        from app.hardware_manager import pump_on
         pump_on(duration)
         return jsonify({"success": True, "message": f"Bomba encendida ({duration}s)"})
     except Exception as e:
@@ -998,7 +991,7 @@ def pump_on_route():
 def pump_off_route():
     """Turn off peristaltic pump"""
     try:
-        from app.hardware import pump_off
+        from app.hardware_manager import pump_off
         pump_off()
         return jsonify({"success": True, "message": "Bomba apagada"})
     except Exception as e:

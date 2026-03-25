@@ -5,7 +5,7 @@ from app.auth import auth, init_login_manager
 from app.routes import routes
 from app.irrigation import irrigation
 from app.db import close_db
-from app.hardware import all_off
+from app.hardware_manager import all_off
 
 
 def create_app():
