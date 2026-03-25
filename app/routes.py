@@ -39,7 +39,7 @@ def dashboard_data():
     dht = db.execute("""
         SELECT temperature, humidity
         FROM dht_readings
-        ORDER BY timestamp DESC
+        ORDER BY id DESC
         LIMIT 1
     """).fetchone()
     return jsonify({
@@ -50,6 +50,7 @@ def dashboard_data():
         "ec": sensor[4] if sensor else None,
         "ph": sensor[5] if sensor else None,
         "time": sensor[6] if sensor else None,
+        "water_pressure": None,  # No water pressure sensor yet
         "water_liters": water[0] or 0,
         "dht_temperature": dht[0] if dht else None,
         "dht_humidity": dht[1] if dht else None
@@ -864,7 +865,7 @@ def peripherals_status():
                 try:
                     db = get_db()
                     last = db.execute("""
-                        SELECT temperature, humidity, timestamp 
+                        SELECT temperature, humidity, created_at 
                         FROM dht_readings 
                         ORDER BY id DESC LIMIT 1
                     """).fetchone()

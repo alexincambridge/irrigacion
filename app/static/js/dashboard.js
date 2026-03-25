@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
   setInterval(function() {
     loadDashboardData();
     loadHistoricalData();
-  }, 5000);
+  }, 10000);
   scheduleResetDailyStats();
 });
 

@@ -12,9 +12,9 @@ def dashboard():
 def dashboard_dht():
     db = get_db()
     rows = db.execute("""
-        SELECT temperature, humidity, timestamp
+        SELECT temperature, humidity, created_at
         FROM dht_readings
-        ORDER BY timestamp DESC
+        ORDER BY id DESC
         LIMIT 10
     """).fetchall()
 

@@ -11,7 +11,7 @@ from datetime import datetime
 
 DB_PATH = "/home/alexdev/Documents/irrigacion/instance/irrigation.db"
 DHT_PIN = board.D4  # GPIO 4
-INTERVAL = 2  # segundos (DHT22 requiere mínimo 2s)
+INTERVAL = 10  # segundos entre lecturas
 
 # use_pulseio=False es NECESARIO en Raspberry Pi para que funcione
 dht = adafruit_dht.DHT22(DHT_PIN, use_pulseio=False)
