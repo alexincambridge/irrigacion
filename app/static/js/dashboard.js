@@ -149,14 +149,26 @@ async function loadDashboardData() {
 }
 
 // ========================================
-// GAUGE UPDATE
+// GAUGE UPDATE + KPI INDICATORS
 // ========================================
+
+// Map gauge names to HTML element IDs
+var gaugeMap = {
+  temp:          { kpi: 'kpiTemp',          unit: '°C',   kpiMin: 'kpiTempMin',          kpiMax: 'kpiTempMax',          gaugeMin: 'tempMin',          gaugeMax: 'tempMax',          badge: 'tempStatus',          trend: 'tempTrend' },
+  humidity:      { kpi: 'kpiHum',           unit: '%',    kpiMin: 'kpiHumMin',           kpiMax: 'kpiHumMax',           gaugeMin: 'humidityMin',      gaugeMax: 'humidityMax',      badge: 'humStatus',           trend: 'humTrend' },
+  pressure:      { kpi: 'kpiPressure',      unit: ' hPa', kpiMin: 'kpiPressureMin',      kpiMax: 'kpiPressureMax',      gaugeMin: 'pressureMin',      gaugeMax: 'pressureMax',      badge: 'pressureStatus',      trend: 'pressureTrend' },
+  solar:         { kpi: 'kpiSolar',         unit: ' W/m²',kpiMin: 'kpiSolarMin',         kpiMax: 'kpiSolarMax',         gaugeMin: 'solarMin',         gaugeMax: 'solarMax',         badge: 'solarStatus',         trend: 'solarTrend' },
+  waterPressure: { kpi: null,               unit: ' bar', kpiMin: null,                  kpiMax: null,                  gaugeMin: 'waterPressureMin', gaugeMax: 'waterPressureMax', badge: 'waterPressureStatus', trend: null },
+  ph:            { kpi: null,               unit: '',     kpiMin: null,                  kpiMax: null,                  gaugeMin: 'phMin',            gaugeMax: 'phMax',            badge: 'phStatus',            trend: null },
+  ec:            { kpi: null,               unit: ' mS',  kpiMin: null,                  kpiMax: null,                  gaugeMin: 'ecMin',            gaugeMax: 'ecMax',            badge: 'ecStatus',            trend: null }
+};
 
 function updateGauge(gaugeName, value, type) {
   var gaugeObj = gauges[gaugeName];
   if (!gaugeObj || !gaugeObj.chart) return;
 
   var config = gaugeObj.config;
+  var map = gaugeMap[gaugeName];
 
   // Handle null/undefined
   if (value === null || typeof value === 'undefined') {
@@ -165,46 +177,87 @@ function updateGauge(gaugeName, value, type) {
   }
 
   var numValue = Number(value);
+  var decimals = (type === 'solar') ? 0 : 1;
 
-  // Update daily min/max stats
+  // --- 1. Update daily min/max stats ---
   var stats = dailyStats[type];
   if (stats) {
     if (stats.min === null || numValue < stats.min) stats.min = numValue;
     if (stats.max === null || numValue > stats.max) stats.max = numValue;
-
-    // Update min/max display elements
-    var minEl = document.getElementById(gaugeName + 'Min');
-    var maxEl = document.getElementById(gaugeName + 'Max');
-    if (minEl) minEl.textContent = 'Min: ' + stats.min.toFixed(1);
-    if (maxEl) maxEl.textContent = 'Max: ' + stats.max.toFixed(1);
   }
 
-  // Calculate percentage for radial bar
+  // --- 2. Update KPI text value (e.g. "23.5°C") ---
+  if (map && map.kpi) {
+    var kpiEl = document.getElementById(map.kpi);
+    if (kpiEl) kpiEl.textContent = numValue.toFixed(decimals) + map.unit;
+  }
+
+  // --- 3. Update KPI min/max ---
+  if (map && stats) {
+    if (map.kpiMin) {
+      var kpiMinEl = document.getElementById(map.kpiMin);
+      if (kpiMinEl) kpiMinEl.textContent = 'Min: ' + stats.min.toFixed(decimals);
+    }
+    if (map.kpiMax) {
+      var kpiMaxEl = document.getElementById(map.kpiMax);
+      if (kpiMaxEl) kpiMaxEl.textContent = 'Max: ' + stats.max.toFixed(decimals);
+    }
+  }
+
+  // --- 4. Update Gauge min/max ---
+  if (map && stats) {
+    if (map.gaugeMin) {
+      var gMinEl = document.getElementById(map.gaugeMin);
+      if (gMinEl) gMinEl.textContent = 'Min: ' + stats.min.toFixed(decimals);
+    }
+    if (map.gaugeMax) {
+      var gMaxEl = document.getElementById(map.gaugeMax);
+      if (gMaxEl) gMaxEl.textContent = 'Max: ' + stats.max.toFixed(decimals);
+    }
+  }
+
+  // --- 5. Update gauge radial bar ---
   var percentage = ((numValue - config.min) / (config.max - config.min)) * 100;
   percentage = Math.min(100, Math.max(0, percentage));
-
   gaugeObj.chart.updateSeries([percentage]);
 
-  // Update color based on criticality
-  var gaugeColors = getCriticalityColor(type, numValue);
+  // --- 6. Update gauge color based on criticality ---
+  var crit = getCriticality(type, numValue);
+  var gaugeColors = colors[crit] || colors.normal;
   gaugeObj.chart.updateOptions({
     colors: [gaugeColors[0]],
-    fill: {
-      gradient: {
-        gradientToColors: [gaugeColors[1]]
-      }
-    }
+    fill: { gradient: { gradientToColors: [gaugeColors[1]] } }
   });
 
-  // Update status badge
-  var badgeId = gaugeName === 'temp' ? 'tempStatus' :
-                gaugeName === 'humidity' ? 'humStatus' :
-                gaugeName + 'Status';
-  var badge = document.getElementById(badgeId);
-  if (badge) {
-    var crit = getCriticality(type, numValue);
-    badge.className = 'gauge-status-badge ' + crit;
-    badge.textContent = crit.toUpperCase();
+  // --- 7. Update status badge ---
+  if (map && map.badge) {
+    var badge = document.getElementById(map.badge);
+    if (badge) {
+      badge.className = 'gauge-status-badge ' + crit;
+      badge.textContent = crit === 'critical' ? 'CRÍTICO' : crit === 'warning' ? 'ALERTA' : 'NORMAL';
+    }
+  }
+
+  // --- 8. Update trend arrow ---
+  if (map && map.trend) {
+    var trendEl = document.getElementById(map.trend);
+    if (trendEl && stats && stats.prev !== undefined) {
+      if (numValue > stats.prev) {
+        trendEl.textContent = '↗'; trendEl.style.color = '#ef4444';
+      } else if (numValue < stats.prev) {
+        trendEl.textContent = '↘'; trendEl.style.color = '#3b82f6';
+      } else {
+        trendEl.textContent = '→'; trendEl.style.color = '#6b7280';
+      }
+    }
+    if (stats) stats.prev = numValue;
+  }
+
+  // --- 9. Update indicator timestamp ---
+  var indicator = document.getElementById('updateIndicator');
+  if (indicator) {
+    var now = new Date().toLocaleTimeString('es-ES');
+    indicator.innerHTML = '<span class="pulse-dot"></span> ' + now;
   }
 }
 
@@ -232,8 +285,7 @@ function getCriticality(type, value) {
 }
 
 function getCriticalityColor(type, value) {
-  var crit = getCriticality(type, value);
-  return colors[crit] || colors.normal;
+  return colors[getCriticality(type, value)] || colors.normal;
 }
 
 // ========================================

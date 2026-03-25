@@ -47,7 +47,7 @@ Hardware
 
 📆 Programador avanzado de riego
 
-📡 Integración ESP32 + LoRa para sensores remotos
+✅ Integración ESP32 + LoRa para control remoto de válvulas (IMPLEMENTADO - ver ESP32/)
 
 📊 Gráficas históricas avanzadas
 
@@ -100,13 +100,65 @@ Crear un sistema de riego inteligente, robusto y extensible, válido tanto para 
         │   Scheduler Thread  │
         │ (background worker)│
         └──────┬──────────────┘
-               │ GPIO
+               │ 
                ▼
      ┌───────────────────────┐
-     │ Hardware (RPi Zero)   │
-     │ - DHT11               │
-     │ - Relé / Válvula      │
-     └───────────────────────┘
+     │ Hardware Layer        │
+     │ - GPIO (local)        │
+     │ - LoRa (remote ESP32) │◄─── LoRa Radio (up to 2km)
+     └───────┬───────────────┘
+             │
+             ▼
+  ┌──────────────────────────┐
+  │ Local: RPi GPIO          │
+  │ - DHT11 Sensor           │
+  │ - Relé (3 zones)         │
+  └──────────────────────────┘
+             
+             OR
+             
+  ┌──────────────────────────┐
+  │ Remote: ESP32 + LoRa     │
+  │ - 4-CH Relay Module      │
+  │ - 4 Solenoid Valves      │
+  │ - Auto-shutoff Timers    │
+  └──────────────────────────┘
+
+## 📡 ESP32 LoRa Control (NEW!)
+
+Control 4 solenoid valves wirelessly with ESP32 via LoRa (up to 2km range).
+
+**Quick Start:** See `ESP32_QUICKSTART.md`
+
+**Complete Guide:** See `ESP32/SETUP_GUIDE.md`
+
+**Features:**
+- ✅ Long-range wireless control (up to 2km)
+- ✅ 4 irrigation zones
+- ✅ Auto-shutoff timers
+- ✅ Signal quality monitoring
+- ✅ Emergency stop
+- ✅ Compatible with existing web interface
+
+## 🚀 Getting Started
+
+### Option 1: Local GPIO Control (Original)
+```bash
+# Configure for direct GPIO control
+# Edit app/config.py: HARDWARE_MODE = 'GPIO'
+python run.py
+```
+
+### Option 2: ESP32 LoRa Control (NEW!)
+```bash
+# 1. Setup ESP32 hardware (see ESP32/SETUP_GUIDE.md)
+# 2. Configure for LoRa mode
+# Edit app/config.py: HARDWARE_MODE = 'LORA'
+# 3. Test connection
+python3 scripts/test_lora.py
+# 4. Start application
+python run.py
+```
 
 sudo systemctl start irrigation
 sudo systemctl stop irrigation
