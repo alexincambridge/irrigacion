@@ -5,10 +5,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 ZONE_PINS = {
-    1: 23, # sector 1 - Jardín
-    2: 24, # sector 2 - Huerta
-    3: 25, # sector 3 - Césped
-    4: 27, # sector 4 - Árboles
+    1: 16,  # sector 1 - Jardín
+    2: 23,  # sector 2 - Huerta
+    3: 24,  # sector 3 - Césped
+    4: 26,  # sector 4 - Árboles
 }
 
 PUMP_PIN = 17  # Peristaltic pump for fertilization
