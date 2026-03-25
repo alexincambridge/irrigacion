@@ -4,11 +4,15 @@ Maneja todos los modos de hardware de forma segura
 """
 
 import logging
-from app.config import Config
 
 logger = logging.getLogger(__name__)
 
-HARDWARE_MODE = getattr(Config, 'HARDWARE_MODE', 'GPIO')
+# Importar HARDWARE_MODE desde config
+try:
+    from app import config
+    HARDWARE_MODE = getattr(config, 'HARDWARE_MODE', 'GPIO')
+except (ImportError, AttributeError):
+    HARDWARE_MODE = 'GPIO'  # Fallback a GPIO
 
 # Import the appropriate hardware module based on config
 if HARDWARE_MODE == 'GPIO':
