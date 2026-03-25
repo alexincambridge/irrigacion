@@ -1,0 +1,15 @@
+[Unit]
+Description=Sistema de Riego Inteligente
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/alexdev/Documents/irrigacion
+ExecStart=/usr/bin/python3 /home/alexdev/Documents/irrigacion/run.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
