@@ -30,8 +30,8 @@
         <div class="kpi-value" id="kpiTemp">--</div>
         <div class="kpi-label">Temperatura</div>
         <div class="kpi-range">
-          <span class="range-min" id="tempMin">Min: --</span>
-          <span class="range-max" id="tempMax">Max: --</span>
+          <span class="range-min" id="kpiTempMin">Min: --</span>
+          <span class="range-max" id="kpiTempMax">Max: --</span>
         </div>
       </div>
       <div class="kpi-trend" id="tempTrend"></div>
@@ -43,8 +43,8 @@
         <div class="kpi-value" id="kpiHum">--</div>
         <div class="kpi-label">Humedad</div>
         <div class="kpi-range">
-          <span class="range-min" id="humMin">Min: --</span>
-          <span class="range-max" id="humMax">Max: --</span>
+          <span class="range-min" id="kpiHumMin">Min: --</span>
+          <span class="range-max" id="kpiHumMax">Max: --</span>
         </div>
       </div>
       <div class="kpi-trend" id="humTrend"></div>
@@ -56,8 +56,8 @@
         <div class="kpi-value" id="kpiPressure">--</div>
         <div class="kpi-label">Presión</div>
         <div class="kpi-range">
-          <span class="range-min" id="pressureMin">Min: --</span>
-          <span class="range-max" id="pressureMax">Max: --</span>
+          <span class="range-min" id="kpiPressureMin">Min: --</span>
+          <span class="range-max" id="kpiPressureMax">Max: --</span>
         </div>
       </div>
       <div class="kpi-trend" id="pressureTrend"></div>
@@ -69,8 +69,8 @@
         <div class="kpi-value" id="kpiSolar">--</div>
         <div class="kpi-label">Radiación Solar</div>
         <div class="kpi-range">
-          <span class="range-min" id="solarMin">Min: --</span>
-          <span class="range-max" id="solarMax">Max: --</span>
+          <span class="range-min" id="kpiSolarMin">Min: --</span>
+          <span class="range-max" id="kpiSolarMax">Max: --</span>
         </div>
       </div>
       <div class="kpi-trend" id="solarTrend"></div>
@@ -96,7 +96,8 @@
       </div>
       <div id="tempGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;5°C o &gt;40°C</span>
+        <span class="min-val" id="tempMin">Min: --</span>
+        <span class="max-val" id="tempMax">Max: --</span>
       </div>
     </div>
 
@@ -107,7 +108,8 @@
       </div>
       <div id="humGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;20% o &gt;90%</span>
+        <span class="min-val" id="humidityMin">Min: --</span>
+        <span class="max-val" id="humidityMax">Max: --</span>
       </div>
     </div>
 
@@ -118,7 +120,8 @@
       </div>
       <div id="pressureGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;980 o &gt;1040 hPa</span>
+        <span class="min-val" id="pressureMin">Min: --</span>
+        <span class="max-val" id="pressureMax">Max: --</span>
       </div>
     </div>
 
@@ -129,7 +132,8 @@
       </div>
       <div id="solarGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &gt;1000 W/m²</span>
+        <span class="min-val" id="solarMin">Min: --</span>
+        <span class="max-val" id="solarMax">Max: --</span>
       </div>
     </div>
 
@@ -141,7 +145,8 @@
       </div>
       <div id="waterPressureGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;0.5 o &gt;6 bar</span>
+        <span class="min-val" id="waterPressureMin">Min: --</span>
+        <span class="max-val" id="waterPressureMax">Max: --</span>
       </div>
     </div>
 
@@ -152,7 +157,8 @@
       </div>
       <div id="phGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;5.5 o &gt;8.5</span>
+        <span class="min-val" id="phMin">Min: --</span>
+        <span class="max-val" id="phMax">Max: --</span>
       </div>
     </div>
 
@@ -163,7 +169,8 @@
       </div>
       <div id="ecGauge" class="gauge-container-compact"></div>
       <div class="gauge-footer-compact">
-        <span class="limit-critical">Crítico: &lt;0.5 o &gt;2.5 mS</span>
+        <span class="min-val" id="ecMin">Min: --</span>
+        <span class="max-val" id="ecMax">Max: --</span>
       </div>
     </div>
   </div>
