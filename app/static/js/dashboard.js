@@ -69,8 +69,8 @@ const colors = {
 document.addEventListener('DOMContentLoaded', function() {
   initializeGauges();
   initializeChart();
+  loadDashboardData(); // Carga inicial
   loadHistoricalData();
-  refresh();
   setInterval(refresh, 5000);
 
   // Reset daily stats at midnight
@@ -85,14 +85,6 @@ function refresh() {
   loadDashboardData();
   loadHistoricalData();
 }
-
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', function() {
-  initializeGauges();
-  initializeChart();
-  loadDashboardData(); // Carga inicial
-  loadHistoricalData();
-  setInterval(refresh, 5000);
 
 function createGauge(elementId, config) {
   const element = document.querySelector(`#${elementId}`);
@@ -190,7 +182,7 @@ async function loadDashboardData() {
   }
 }
 
-function initializeGauges() {
+function initializeChart() {
   const element = document.querySelector('#historyChart');
   if (!element) return;
 
