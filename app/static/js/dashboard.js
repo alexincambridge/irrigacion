@@ -81,72 +81,18 @@ document.addEventListener('DOMContentLoaded', function() {
 // GAUGE INITIALIZATION
 // ========================================
 
-function initializeGauges() {
-  // Temperature Gauge (0-50°C)
-  gauges.temp = createGauge('tempGauge', {
-    min: 0,
-    max: 50,
-    unit: '°C',
-    type: 'temperature',
-    height: 120
-  });
-
-  // Humidity Gauge (0-100%)
-  gauges.humidity = createGauge('humGauge', {
-    min: 0,
-    max: 100,
-    unit: '%',
-    type: 'humidity',
-    height: 120
-  });
-
-  // Pressure Gauge (950-1050 hPa)
-  gauges.pressure = createGauge('pressureGauge', {
-    min: 950,
-    max: 1050,
-    unit: 'hPa',
-    type: 'pressure',
-    height: 120
-  });
-
-  // Solar Gauge (0-1200 W/m²)
-  gauges.solar = createGauge('solarGauge', {
-    min: 0,
-    max: 1200,
-    unit: 'W/m²',
-    type: 'solar',
-    height: 120
-  });
-
-  // Water Pressure Gauge (0-8 bar)
-  gauges.waterPressure = createGauge('waterPressureGauge', {
-    min: 0,
-    max: 8,
-    unit: 'bar',
-    type: 'waterPressure',
-    height: 120
-  });
-
-  // pH Gauge (0-14)
-  gauges.ph = createGauge('phGauge', {
-    min: 0,
-    max: 14,
-    unit: 'pH',
-    type: 'ph',
-    height: 120
-  });
-
-  // EC Gauge (0-4 mS)
-  gauges.ec = createGauge('ecGauge', {
-    min: 0,
-    max: 4,
-    unit: 'mS',
-    type: 'ec',
-    height: 120
-  });
-
-  console.log("✓ Gauges initialized");
+function refresh() {
+  loadDashboardData();
+  loadHistoricalData();
 }
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+  initializeGauges();
+  initializeChart();
+  loadDashboardData(); // Carga inicial
+  loadHistoricalData();
+  setInterval(refresh, 5000);
 
 function createGauge(elementId, config) {
   const element = document.querySelector(`#${elementId}`);
@@ -219,10 +165,32 @@ function createGauge(elementId, config) {
 }
 
 // ========================================
-// CHART INITIALIZATION
+// GAUGE INITIALIZATION
 // ========================================
 
-function initializeChart() {
+async function loadDashboardData() {
+  try {
+    const response = await fetch('/dashboard/data');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    // Update gauges with new data
+    updateGauge('temp', data.dht_temperature);
+    updateGauge('humidity', data.dht_humidity);
+    updateGauge('pressure', data.pressure);
+    updateGauge('solar', data.solar);
+    updateGauge('waterPressure', data.water_pressure);
+    updateGauge('ph', data.ph);
+    updateGauge('ec', data.ec);
+
+  } catch (error) {
+    console.error("Error loading dashboard data:", error);
+  }
+}
+
+function initializeGauges() {
   const element = document.querySelector('#historyChart');
   if (!element) return;
 
@@ -361,37 +329,86 @@ async function loadHistoricalData() {
 // DATA REFRESH
 // ========================================
 
-async function refresh() {
+function refresh() {
+  loadDashboardData();
+  loadHistoricalData();
+}
+
+async function loadDashboardData() {
   try {
     const response = await fetch('/dashboard/data');
     if (!response.ok) {
-      console.error('Failed to fetch dashboard data');
-      return;
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-
     const data = await response.json();
 
-    // Update gauges and KPIs
-    updateTemperature(data.dht_temperature || data.temperature);
-    updateHumidity(data.dht_humidity || data.humidity);
-    updatePressure(data.pressure);
-    updateSolar(data.solar);
-    updateWaterPressure(data.water_pressure);
-    updatePH(data.ph);
-    updateEC(data.ec);
-
-    // Update system status
-    updateSystemStatus();
+    // Update gauges with new data
+    updateGauge('temp', data.dht_temperature);
+    updateGauge('humidity', data.dht_humidity);
+    updateGauge('pressure', data.pressure);
+    updateGauge('solar', data.solar);
+    updateGauge('waterPressure', data.water_pressure);
+    updateGauge('ph', data.ph);
+    updateGauge('ec', data.ec);
 
   } catch (error) {
-    console.error('Dashboard refresh error:', error);
-    showAlert('Error de conexión con el servidor', 'error');
+    console.error("Error loading dashboard data:", error);
   }
 }
 
 // ========================================
 // UPDATE FUNCTIONS
 // ========================================
+
+function updateGauge(gaugeName, value) {
+  const gauge = gauges[gaugeName];
+  if (!gauge) return;
+
+  const config = gauge.w.config.chart;
+  const type = config.type;
+
+  // Handle null or undefined values
+  if (value === null || typeof value === 'undefined') {
+    gauge.updateSeries([0]);
+    // Optionally, display 'N/A' or similar
+    return;
+  }
+
+  // Update daily stats
+  const stats = dailyStats[type];
+  if (stats) {
+    if (stats.min === null || value < stats.min) stats.min = value;
+    if (stats.max === null || value > stats.max) stats.max = value;
+
+    // Update min/max display
+    const minEl = document.querySelector(`#${gaugeName}Min`);
+    const maxEl = document.querySelector(`#${gaugeName}Max`);
+    if (minEl) minEl.textContent = `Min: ${stats.min.toFixed(1)}`;
+    if (maxEl) maxEl.textContent = `Max: ${stats.max.toFixed(1)}`;
+  }
+
+  // Calculate percentage for radial bar
+  const min = gauge.w.config.chart.min;
+  const max = gauge.w.config.chart.max;
+  const percentage = ((value - min) / (max - min)) * 100;
+
+  gauge.updateSeries([percentage]);
+
+  // Update color based on criticality
+  const newColor = getCriticalityColor(type, value);
+  gauge.updateOptions({
+    colors: [newColor[0]],
+    fill: {
+      gradient: {
+        stops: [0, 100],
+        colorStops: [
+          { offset: 0, color: newColor[0], opacity: 1 },
+          { offset: 100, color: newColor[1], opacity: 1 }
+        ]
+      }
+    }
+  });
+}
 
 function updateTemperature(value) {
   if (value === null || value === undefined) return;

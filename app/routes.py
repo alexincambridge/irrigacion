@@ -810,17 +810,8 @@ def peripherals():
 @login_required
 def peripherals_status():
     """Check status of all peripherals and return JSON"""
-    from app.config import HARDWARE_MODE
-    peripherals_config = {
-        "relay_1": {"name": "Relé Zona 1 - Jardín", "type": "relay", "gpio": 23},
-        "relay_2": {"name": "Relé Zona 2 - Huerta", "type": "relay", "gpio": 24},
-        "relay_3": {"name": "Relé Zona 3 - Césped", "type": "relay", "gpio": 25},
-        "relay_4": {"name": "Relé Zona 4 - Árboles", "type": "relay", "gpio": 27},
-        "dht22": {"name": "DHT22 Temp/Humedad", "type": "sensor", "gpio": 4},
-        "pump": {"name": "Bomba Peristáltica", "type": "actuator", "gpio": 17},
-        "esp32_lora": {"name": "ESP32 LoRa (Tensiómetro)", "type": "esp32", "address": "lora"},
-        "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
-    }
+    from app.config import HARDWARE_MODE, PERIPHERALS
+    peripherals_config = PERIPHERALS
 
     results = []
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
