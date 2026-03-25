@@ -17,35 +17,23 @@ INTERVAL = 2  # segundos (DHT22 requiere mínimo 2s)
 dht = adafruit_dht.DHT22(DHT_PIN, use_pulseio=False)
 
 def insert_reading(temp: float, hum: float) -> None:
-    """Insertar lectura en base de datos"""
+    """Insertar lectura en base de datos (usando CURRENT_TIMESTAMP)"""
     conn = sqlite3.connect(DB_PATH, timeout=10)
     cur = conn.cursor()
 
     try:
-        # Intentar insertar con created_at explícito
         cur.execute(
             """
-            INSERT INTO dht_readings (temperature, humidity, created_at)
-            VALUES (?, ?, ?)
+            INSERT INTO dht_readings (temperature, humidity)
+            VALUES (?, ?)
             """,
-            (temp, hum, datetime.now())
+            (temp, hum)
         )
-    except sqlite3.OperationalError as e:
-        if "created_at" in str(e):
-            # Si falta created_at, intentar sin ella (usa CURRENT_TIMESTAMP)
-            print("[⚠️  WARN] Columna created_at no existe, usando SQL CURRENT_TIMESTAMP")
-            cur.execute(
-                """
-                INSERT INTO dht_readings (temperature, humidity)
-                VALUES (?, ?)
-                """,
-                (temp, hum)
-            )
-        else:
-            raise
-
-    conn.commit()
-    conn.close()
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"[❌ ERROR DB] {e}")
+    finally:
+        conn.close()
 
 def main() -> None:
     print("🌡️ DHT22 Logger iniciado")
