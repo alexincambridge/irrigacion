@@ -865,7 +865,7 @@ def peripherals_status():
                 try:
                     db = get_db()
                     last = db.execute("""
-                        SELECT temperature, humidity, created_at 
+                        SELECT temperature, humidity 
                         FROM dht_readings 
                         ORDER BY id DESC LIMIT 1
                     """).fetchone()
@@ -873,7 +873,7 @@ def peripherals_status():
                     if last:
                         device["status"] = "ok"
                         device["message"] = f"T: {last[0]}°C | H: {last[1]}%"
-                        device["last_seen"] = str(last[2]) if last[2] else now_str
+                        device["last_seen"] = now_str
                         device["detail"] = f"GPIO {cfg['gpio']}"
                     else:
                         device["status"] = "idle"

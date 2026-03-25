@@ -18,8 +18,8 @@ def save_reading(temp: float, hum: float) -> None:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO dht_readings (temperature, humidity, created_at)
-        VALUES (?, ?, datetime('now'))
+        INSERT INTO dht_readings (temperature, humidity)
+        VALUES (?, ?)
     """, (temp, hum))
     conn.commit()
     conn.close()
