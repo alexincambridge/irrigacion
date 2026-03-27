@@ -17,12 +17,17 @@ WATER_TIME = 5
 # Options: 'GPIO' (direct Raspberry Pi GPIO), 'LORA' (ESP32 via LoRa), 'SIMULATION' (testing)
 HARDWARE_MODE = 'GPIO'  # Change to 'LORA' for ESP32 control or 'SIMULATION' for testing
 
-# LoRa Configuration (if HARDWARE_MODE = 'LORA')
-LORA_FREQUENCY = 915E6  # 915 MHz for US/Americas, 868E6 for Europe/Asia
-LORA_SPREADING_FACTOR = 12  # 7-12, higher = longer range but slower
-LORA_BANDWIDTH = 125E3  # 125 kHz
-LORA_CODING_RATE = 5  # 4/5
-LORA_TX_POWER = 20  # dBm
+# LoRa UART Configuration (EBYTE E220/E32 module)
+LORA_TX_PIN = 14   # GPIO 14 (RPi TXD) → RXD del módulo LoRa
+LORA_RX_PIN = 15   # GPIO 15 (RPi RXD) → TXD del módulo LoRa
+LORA_M0_PIN = 5    # GPIO 5 → M0 (modo operación)
+LORA_M1_PIN = 6    # GPIO 6 → M1 (modo operación)
+LORA_AUX_PIN = 13  # GPIO 13 → AUX (estado del módulo)
+LORA_SERIAL_PORT = '/dev/serial0'  # UART hardware RPi
+LORA_BAUD_RATE = 9600  # Baud rate por defecto EBYTE
+LORA_ADDRESS = 0x0001  # Dirección del RPi
+LORA_CHANNEL = 23  # Canal LoRa (410.125 + 23 = 433.125 MHz para EU)
+LORA_FREQUENCY = 868E6  # 868 MHz para Europa
 
 # Irrigation Zones
 NUM_ZONES = 4  # Number of irrigation zones/valves
@@ -36,6 +41,7 @@ PERIPHERALS = {
     "dht22": {"name": "DHT22 Temp/Humedad", "type": "sensor", "gpio": 4},
     "pump": {"name": "Bomba Peristáltica", "type": "actuator", "gpio": 17},
     "esp32_lora": {"name": "ESP32 LoRa (Tensiómetro)", "type": "esp32", "address": "lora"},
+    "lora_ebyte": {"name": "LoRa EBYTE E220 (UART)", "type": "lora", "gpio_tx": 14, "gpio_rx": 15, "gpio_m0": 5, "gpio_m1": 6, "gpio_aux": 13},
     "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
 }
 

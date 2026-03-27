@@ -1,20 +1,20 @@
 """
 Hardware control abstraction layer
-Supports both direct GPIO control and LoRa-based ESP32 control
+Supports both direct GPIO control and LoRa-based ESP32 control (EBYTE UART)
 """
 
 import logging
-from app.config import Config
+from app import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Determine hardware mode from config
-HARDWARE_MODE = getattr(Config, 'HARDWARE_MODE', 'GPIO')  # 'GPIO' or 'LORA'
+HARDWARE_MODE = getattr(config, 'HARDWARE_MODE', 'GPIO')  # 'GPIO' or 'LORA'
 
 if HARDWARE_MODE == 'LORA':
     from app.lora_controller import get_lora_controller
-    logger.info("Hardware mode: LoRa (ESP32)")
+    logger.info("Hardware mode: LoRa EBYTE UART (ESP32)")
 elif HARDWARE_MODE == 'GPIO':
     try:
         import RPi.GPIO as GPIO
@@ -29,15 +29,19 @@ else:
     logger.info("Hardware mode: Simulation")
     HARDWARE_MODE = 'SIMULATION'
 
-# Zone/Valve configuration
+# Zone/Valve configuration (matches config.py PERIPHERALS)
 ZONE_PINS = {
-    1: 23,  # sector 1
-    2: 24,  # sector 2
-    3: 25,  # sector 3
-    4: 27,  # sector 4 (added for 4 zones)
+    1: 16,  # sector 1 - Jardín
+    2: 23,  # sector 2 - Huerta
+    3: 24,  # sector 3 - Césped
+    4: 26,  # sector 4 - Árboles
 }
 
+# Pump configuration
+PUMP_PIN = getattr(config, 'PUMP_PIN', 17)
+
 _active_zones = set()
+_pump_active = False
 _lora_controller = None
 
 # Initialize GPIO pins if using direct GPIO mode
@@ -45,6 +49,8 @@ if HARDWARE_MODE == 'GPIO' and GPIO:
     for pin in ZONE_PINS.values():
         GPIO.setup(pin, GPIO.OUT)
         GPIO.output(pin, GPIO.LOW)
+    GPIO.setup(PUMP_PIN, GPIO.OUT)
+    GPIO.output(PUMP_PIN, GPIO.LOW)
 
 # Initialize LoRa controller if using LoRa mode
 if HARDWARE_MODE == 'LORA':
@@ -59,6 +65,8 @@ def zone_on(zone_id, duration=0):
         zone_id: Zone number (1-4)
         duration: Auto-off duration in seconds (0 = manual mode)
     """
+    global _active_zones
+
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             success = _lora_controller.valve_on(zone_id, duration)
@@ -91,12 +99,9 @@ def zone_on(zone_id, duration=0):
 
 
 def zone_off(zone_id):
-    """
-    Turn off a zone/valve
+    """Turn off a zone/valve"""
+    global _active_zones
 
-    Args:
-        zone_id: Zone number (1-4)
-    """
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             success = _lora_controller.valve_off(zone_id)
@@ -126,77 +131,90 @@ def zone_off(zone_id):
 
 
 def zone_state(zone_id):
-    """
-    Get current state of a zone
-
-    Args:
-        zone_id: Zone number (1-4)
-
-    Returns:
-        True if zone is on, False if off
-    """
+    """Get current state of a zone"""
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             status = _lora_controller.get_status()
             if status:
                 return status.get(zone_id, False)
         return zone_id in _active_zones
-
-    else:
-        return zone_id in _active_zones
+    return zone_id in _active_zones
 
 
 def all_off():
-    """Turn off all zones/valves"""
+    """Turn off all zones/valves and pump"""
+    global _active_zones
+
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             success = _lora_controller.all_valves_off()
             if success:
                 _active_zones.clear()
                 logger.info("[LoRa] All zones OFF")
+            pump_off()
             return success
         return False
 
     elif HARDWARE_MODE == 'GPIO':
-        for zone in list(_active_zones):
+        for zone in list(ZONE_PINS.keys()):
             zone_off(zone)
+        pump_off()
         logger.info("[GPIO] All zones OFF")
         return True
 
     else:  # SIMULATION
         _active_zones.clear()
+        pump_off()
         logger.info("[SIMULATION] All zones OFF")
         return True
 
 
-def get_all_zones_status():
-    """
-    Get status of all zones
+def pump_on(duration_seconds=0):
+    """Turn on peristaltic pump"""
+    global _pump_active
 
-    Returns:
-        Dictionary with zone states {1: True, 2: False, ...}
-    """
+    if HARDWARE_MODE == 'GPIO' and GPIO:
+        GPIO.output(PUMP_PIN, GPIO.HIGH)
+    _pump_active = True
+    logger.info(f"[{HARDWARE_MODE}] Pump ON (GPIO {PUMP_PIN})" +
+               (f" duration={duration_seconds}s" if duration_seconds > 0 else ""))
+    return True
+
+
+def pump_off():
+    """Turn off peristaltic pump"""
+    global _pump_active
+
+    if HARDWARE_MODE == 'GPIO' and GPIO:
+        GPIO.output(PUMP_PIN, GPIO.LOW)
+    _pump_active = False
+    logger.info(f"[{HARDWARE_MODE}] Pump OFF (GPIO {PUMP_PIN})")
+    return True
+
+
+def pump_state():
+    """Get pump state"""
+    return _pump_active
+
+
+def get_all_zones_status():
+    """Get status of all zones"""
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             status = _lora_controller.get_status()
             if status:
                 return status
 
-    # Fallback to local tracking
     return {zone_id: zone_id in _active_zones for zone_id in ZONE_PINS.keys()}
 
 
 def get_hardware_info():
-    """
-    Get hardware configuration and status
-
-    Returns:
-        Dictionary with hardware information
-    """
+    """Get hardware configuration and status"""
     info = {
         'mode': HARDWARE_MODE,
         'zones': len(ZONE_PINS),
-        'active_zones': list(_active_zones)
+        'active_zones': list(_active_zones),
+        'pump_active': _pump_active
     }
 
     if HARDWARE_MODE == 'LORA' and _lora_controller:
@@ -209,12 +227,7 @@ def get_hardware_info():
 
 
 def check_connection():
-    """
-    Check if hardware is connected and responding
-
-    Returns:
-        True if hardware is responding, False otherwise
-    """
+    """Check if hardware is connected and responding"""
     if HARDWARE_MODE == 'LORA':
         if _lora_controller:
             return _lora_controller.ping()

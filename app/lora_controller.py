@@ -1,19 +1,33 @@
 """
-LoRa Controller for Raspberry Pi
-Communicates with ESP32 to control irrigation valves via LoRa
+LoRa UART Controller for Raspberry Pi
+EBYTE E220/E32 module — communicates with ESP32 via LoRa UART
+
+Pinout:
+  RPi GPIO 14 (TXD) → RXD módulo LoRa
+  RPi GPIO 15 (RXD) → TXD módulo LoRa
+  RPi GPIO 5        → M0
+  RPi GPIO 6        → M1
+  RPi GPIO 13       → AUX
+  3.3V (Pin 1)      → VCC
+  GND  (Pin 6)      → GND
 """
 
 import time
 import logging
-from datetime import datetime
 
 try:
-    from SX127x.LoRa import LoRa
-    from SX127x.board_config import BOARD
-    LORA_AVAILABLE = True
+    import serial
+    SERIAL_AVAILABLE = True
 except ImportError:
-    LORA_AVAILABLE = False
-    logging.warning("LoRa module not available. Running in simulation mode.")
+    SERIAL_AVAILABLE = False
+    logging.warning("pyserial not available. pip install pyserial")
+
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    logging.warning("RPi.GPIO not available — LoRa control pins disabled")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,315 +35,382 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# -----------------------------------------------------------
+# EBYTE operating modes (M0, M1 pin combinations)
+# -----------------------------------------------------------
+MODE_NORMAL     = (0, 0)  # M0=LOW,  M1=LOW  → UART transparent transmission
+MODE_WAKEUP     = (1, 0)  # M0=HIGH, M1=LOW  → Wake-up mode
+MODE_POWERSAVE  = (0, 1)  # M0=LOW,  M1=HIGH → Power saving / listen
+MODE_SLEEP      = (1, 1)  # M0=HIGH, M1=HIGH → Sleep / configuration mode
+
 
 class LoRaController:
-    """LoRa communication controller for irrigation system"""
+    """LoRa UART communication controller for EBYTE E220/E32 modules"""
 
-    def __init__(self, frequency=915E6):
-        """
-        Initialize LoRa controller
-
-        Args:
-            frequency: LoRa frequency in Hz (915E6 for US, 868E6 for EU)
-        """
-        self.frequency = frequency
-        self.lora = None
+    def __init__(self, port='/dev/serial0', baud=9600,
+                 m0_pin=5, m1_pin=6, aux_pin=13):
+        self.port = port
+        self.baud = baud
+        self.m0_pin = m0_pin
+        self.m1_pin = m1_pin
+        self.aux_pin = aux_pin
+        self.serial = None
+        self.connected = False
         self.last_response = None
         self.last_rssi = None
-        self.last_snr = None
-        self.connected = False
 
-        if LORA_AVAILABLE:
-            self._init_lora()
-        else:
-            logger.warning("LoRa hardware not available - using simulation mode")
+        self._init_gpio()
+        self._init_serial()
 
-    def _init_lora(self):
-        """Initialize LoRa hardware"""
+    # -------------------------------------------------------
+    # Initialisation helpers
+    # -------------------------------------------------------
+    def _init_gpio(self):
+        """Set up M0, M1, AUX pins"""
+        if not GPIO_AVAILABLE:
+            logger.warning("GPIO not available — M0/M1/AUX pins not configured")
+            return
+
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(self.m0_pin, GPIO.OUT)
+        GPIO.setup(self.m1_pin, GPIO.OUT)
+        GPIO.setup(self.aux_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+        # Default to normal (transparent) mode
+        self._set_mode(MODE_NORMAL)
+        logger.info(f"📡 LoRa GPIO: M0={self.m0_pin}, M1={self.m1_pin}, AUX={self.aux_pin}")
+
+    def _init_serial(self):
+        """Open UART serial port"""
+        if not SERIAL_AVAILABLE:
+            logger.warning("pyserial not installed — running simulation")
+            return
+
         try:
-            BOARD.setup()
-            self.lora = LoRa(verbose=False)
-            self.lora.set_mode_stdby()
-
-            # Configure LoRa parameters
-            self.lora.set_freq(self.frequency / 1E6)  # Convert to MHz
-            self.lora.set_spreading_factor(12)
-            self.lora.set_bw(7)  # 125 kHz
-            self.lora.set_coding_rate(5)  # 4/5
-            self.lora.set_tx_power(20, False)  # 20 dBm
-            self.lora.set_crc_on()
-
-            self.lora.set_mode_rx_cont()
+            self.serial = serial.Serial(
+                port=self.port,
+                baudrate=self.baud,
+                parity=serial.PARITY_NONE,
+                stopbits=serial.STOPBITS_ONE,
+                bytesize=serial.EIGHTBITS,
+                timeout=2
+            )
             self.connected = True
-            logger.info(f"LoRa initialized at {self.frequency/1E6} MHz")
-
+            logger.info(f"📡 LoRa UART opened: {self.port} @ {self.baud} baud")
         except Exception as e:
-            logger.error(f"Failed to initialize LoRa: {e}")
+            logger.error(f"❌ Failed to open LoRa UART: {e}")
             self.connected = False
 
+    # -------------------------------------------------------
+    # Operating mode control
+    # -------------------------------------------------------
+    def _set_mode(self, mode):
+        """Set EBYTE operating mode via M0/M1 pins"""
+        if not GPIO_AVAILABLE:
+            return
+        m0_val, m1_val = mode
+        GPIO.output(self.m0_pin, m0_val)
+        GPIO.output(self.m1_pin, m1_val)
+        time.sleep(0.1)  # allow module to switch mode
+        self._wait_aux()
+
+    def _wait_aux(self, timeout=3):
+        """Wait for AUX pin to go HIGH (module ready)"""
+        if not GPIO_AVAILABLE:
+            time.sleep(0.1)
+            return True
+        start = time.time()
+        while time.time() - start < timeout:
+            if GPIO.input(self.aux_pin) == 1:
+                return True
+            time.sleep(0.01)
+        logger.warning("⚠️ AUX timeout — module may be busy")
+        return False
+
+    # -------------------------------------------------------
+    # Core send / receive
+    # -------------------------------------------------------
     def send_command(self, command, timeout=5):
         """
-        Send command to ESP32 and wait for response
+        Send a text command via LoRa UART and wait for response.
 
         Args:
-            command: Command string (e.g., "ON:1:300")
-            timeout: Response timeout in seconds
+            command: e.g. "ON:1:300", "OFF:2", "STATUS", "PING"
+            timeout: seconds to wait for response
 
         Returns:
-            Response string or None if timeout/error
+            Response string or None
         """
-        if not LORA_AVAILABLE or not self.connected:
-            logger.info(f"[SIMULATION] Would send: {command}")
+        if not self.connected or not self.serial:
+            logger.info(f"[SIM] Would send: {command}")
             return self._simulate_response(command)
 
         try:
-            # Send command
-            logger.info(f"📤 Sending: {command}")
-            self.lora.set_mode_stdby()
+            self._set_mode(MODE_NORMAL)
+            self._wait_aux()
 
-            payload = list(command.encode())
-            self.lora.write_payload(payload)
-            self.lora.set_mode_tx()
+            # Flush stale data
+            self.serial.reset_input_buffer()
 
-            # Wait for transmission to complete
-            time.sleep(0.5)
-            self.lora.set_mode_rx_cont()
+            # Send command with newline terminator
+            payload = (command + '\n').encode('utf-8')
+            self.serial.write(payload)
+            self.serial.flush()
+            logger.info(f"📤 LoRa TX: {command}")
 
             # Wait for response
-            start_time = time.time()
-            while time.time() - start_time < timeout:
-                if self.lora.rx_done():
-                    response = self._read_response()
-                    if response:
-                        logger.info(f"📡 Received: {response}")
-                        return response
-                time.sleep(0.1)
+            start = time.time()
+            buffer = b''
+            while time.time() - start < timeout:
+                if self.serial.in_waiting > 0:
+                    chunk = self.serial.read(self.serial.in_waiting)
+                    buffer += chunk
+                    if b'\n' in buffer:
+                        break
+                time.sleep(0.05)
 
-            logger.warning(f"Timeout waiting for response to: {command}")
+            if buffer:
+                response = buffer.decode('utf-8', errors='replace').strip()
+                self.last_response = response
+                logger.info(f"📡 LoRa RX: {response}")
+                return response
+
+            logger.warning(f"⏱️ Timeout waiting for response to: {command}")
             return None
 
         except Exception as e:
-            logger.error(f"Error sending command: {e}")
-            return None
-
-    def _read_response(self):
-        """Read and parse LoRa response"""
-        try:
-            payload = self.lora.read_payload(nocheck=True)
-            response = ''.join(chr(c) for c in payload if c != 0)
-
-            self.last_rssi = self.lora.get_pkt_rssi_value()
-            self.last_snr = self.lora.get_pkt_snr_value()
-            self.last_response = response
-
-            logger.debug(f"RSSI: {self.last_rssi} dBm, SNR: {self.last_snr} dB")
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Error reading response: {e}")
+            logger.error(f"❌ LoRa send error: {e}")
             return None
 
     def _simulate_response(self, command):
         """Simulate response for testing without hardware"""
-        time.sleep(0.5)  # Simulate transmission delay
-
+        time.sleep(0.3)
         parts = command.split(':')
-        cmd = parts[0] if len(parts) > 0 else ""
+        cmd = parts[0] if parts else ""
 
         if cmd == "ON" and len(parts) >= 2:
-            valve = parts[1]
-            return f"OK:VALVE_{valve}_ON"
+            return f"OK:VALVE_{parts[1]}_ON"
         elif cmd == "OFF" and len(parts) >= 2:
-            valve = parts[1]
-            return f"OK:VALVE_{valve}_OFF"
+            return f"OK:VALVE_{parts[1]}_OFF"
         elif cmd == "ALL_OFF":
             return "OK:ALL_OFF"
         elif cmd == "STATUS":
             return "STATUS:1=OFF,2=OFF,3=OFF,4=OFF"
         elif cmd == "PING":
             return "PONG:ESP32_IRR_001"
-        else:
-            return "ERROR:INVALID_COMMAND"
+        return "ERROR:INVALID_COMMAND"
 
-    # Convenience methods for common operations
-
+    # -------------------------------------------------------
+    # Convenience methods — valve control
+    # -------------------------------------------------------
     def valve_on(self, valve_id, duration=0):
-        """
-        Turn on a specific valve
-
-        Args:
-            valve_id: Valve number (1-4)
-            duration: Auto-off duration in seconds (0 = manual mode)
-
-        Returns:
-            True if successful, False otherwise
-        """
-        if duration > 0:
-            command = f"ON:{valve_id}:{duration}"
-        else:
-            command = f"ON:{valve_id}"
-
-        response = self.send_command(command)
-        return response and response.startswith("OK")
+        cmd = f"ON:{valve_id}:{duration}" if duration > 0 else f"ON:{valve_id}"
+        resp = self.send_command(cmd)
+        return resp is not None and resp.startswith("OK")
 
     def valve_off(self, valve_id):
-        """
-        Turn off a specific valve
-
-        Args:
-            valve_id: Valve number (1-4)
-
-        Returns:
-            True if successful, False otherwise
-        """
-        command = f"OFF:{valve_id}"
-        response = self.send_command(command)
-        return response and response.startswith("OK")
+        resp = self.send_command(f"OFF:{valve_id}")
+        return resp is not None and resp.startswith("OK")
 
     def all_valves_off(self):
-        """
-        Turn off all valves
-
-        Returns:
-            True if successful, False otherwise
-        """
-        response = self.send_command("ALL_OFF")
-        return response and response.startswith("OK")
+        resp = self.send_command("ALL_OFF")
+        return resp is not None and resp.startswith("OK")
 
     def get_status(self):
         """
-        Get status of all valves
-
-        Returns:
-            Dictionary with valve states or None if failed
-            Example: {1: False, 2: True, 3: False, 4: False}
+        Returns dict {1: False, 2: True, 3: False, 4: False}
         """
-        response = self.send_command("STATUS")
-        if not response or not response.startswith("STATUS:"):
+        resp = self.send_command("STATUS")
+        if not resp or not resp.startswith("STATUS:"):
             return None
-
         try:
-            # Parse "STATUS:1=ON,2=OFF,3=OFF,4=OFF"
-            status_str = response.split(':')[1]
+            status_str = resp.split(':', 1)[1]
             states = {}
-
             for item in status_str.split(','):
-                valve_num, state = item.split('=')
-                states[int(valve_num)] = (state == "ON")
-
+                num, state = item.split('=')
+                states[int(num)] = (state.strip().upper() == "ON")
             return states
-
         except Exception as e:
             logger.error(f"Error parsing status: {e}")
             return None
 
     def ping(self):
-        """
-        Check if ESP32 is responding
+        resp = self.send_command("PING", timeout=3)
+        return resp is not None and resp.startswith("PONG")
 
-        Returns:
-            True if ESP32 responds, False otherwise
+    # -------------------------------------------------------
+    # Module configuration (sleep mode required)
+    # -------------------------------------------------------
+    def configure_module(self, address=0x0001, channel=23, air_rate=2,
+                         uart_rate=3, power=0):
         """
-        response = self.send_command("PING", timeout=3)
-        return response and response.startswith("PONG")
+        Configure EBYTE module parameters (enters sleep mode).
 
-    def get_signal_quality(self):
+        Args:
+            address: 2-byte device address (0x0000 - 0xFFFF)
+            channel: LoRa channel (0-83 for E220)
+            air_rate: 0=0.3k, 1=1.2k, 2=2.4k, 3=4.8k, 4=9.6k, 5=19.2k
+            uart_rate: 0=1200, 1=2400, 2=4800, 3=9600, 4=19200, 5=38400, 6=57600, 7=115200
+            power: 0=22dBm, 1=17dBm, 2=13dBm, 3=10dBm
         """
-        Get last received signal quality metrics
+        if not self.connected or not self.serial:
+            logger.warning("Cannot configure — serial not available")
+            return False
 
-        Returns:
-            Dictionary with RSSI and SNR or None
-        """
-        if self.last_rssi is None:
+        try:
+            self._set_mode(MODE_SLEEP)
+            time.sleep(0.5)
+
+            addr_h = (address >> 8) & 0xFF
+            addr_l = address & 0xFF
+            speed = (uart_rate << 5) | (air_rate & 0x07)
+            option = (power & 0x03)
+
+            config_bytes = bytes([0xC0, addr_h, addr_l, speed, channel, option])
+            self.serial.write(config_bytes)
+            self.serial.flush()
+            time.sleep(0.5)
+
+            resp = self.serial.read(6)
+            self._set_mode(MODE_NORMAL)
+
+            if len(resp) >= 4:
+                logger.info(f"✅ Module configured: addr=0x{address:04X}, ch={channel}")
+                return True
+            else:
+                logger.warning("⚠️ No response to config command")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Config error: {e}")
+            self._set_mode(MODE_NORMAL)
+            return False
+
+    def read_config(self):
+        """Read current module configuration"""
+        if not self.connected or not self.serial:
             return None
 
-        return {
-            'rssi': self.last_rssi,
-            'snr': self.last_snr,
-            'quality': self._calculate_signal_quality()
-        }
+        try:
+            self._set_mode(MODE_SLEEP)
+            time.sleep(0.3)
 
-    def _calculate_signal_quality(self):
-        """Calculate signal quality percentage"""
-        if self.last_rssi is None:
-            return 0
+            self.serial.write(bytes([0xC1, 0xC1, 0xC1]))
+            self.serial.flush()
+            time.sleep(0.5)
 
-        # RSSI typically ranges from -120 (worst) to -30 (best)
-        rssi_percent = min(100, max(0, (self.last_rssi + 120) * 100 / 90))
+            resp = self.serial.read(6)
+            self._set_mode(MODE_NORMAL)
 
-        # SNR typically ranges from -20 to +10
-        snr_percent = min(100, max(0, (self.last_snr + 20) * 100 / 30)) if self.last_snr else 50
+            if len(resp) >= 6:
+                config = {
+                    'head': hex(resp[0]),
+                    'address': (resp[1] << 8) | resp[2],
+                    'speed': hex(resp[3]),
+                    'channel': resp[4],
+                    'option': hex(resp[5])
+                }
+                logger.info(f"📋 Module config: {config}")
+                return config
+            return None
 
-        # Combined quality
-        return int((rssi_percent + snr_percent) / 2)
+        except Exception as e:
+            logger.error(f"Error reading config: {e}")
+            self._set_mode(MODE_NORMAL)
+            return None
 
+    # -------------------------------------------------------
+    # Signal quality
+    # -------------------------------------------------------
+    def get_signal_quality(self):
+        """Approximate signal quality (EBYTE modules don't report RSSI easily)"""
+        if self.last_rssi is not None:
+            return {
+                'rssi': self.last_rssi,
+                'quality': min(100, max(0, (self.last_rssi + 120) * 100 // 90))
+            }
+        # If we got a recent successful response, assume decent quality
+        if self.last_response:
+            return {'rssi': -60, 'quality': 67}
+        return None
+
+    # -------------------------------------------------------
+    # Cleanup
+    # -------------------------------------------------------
     def cleanup(self):
-        """Cleanup LoRa resources"""
-        if LORA_AVAILABLE and self.lora:
-            try:
-                self.lora.set_mode_stdby()
-                BOARD.teardown()
-                logger.info("LoRa cleaned up")
-            except Exception as e:
-                logger.error(f"Error during cleanup: {e}")
+        """Release serial port and GPIO"""
+        if self.serial and self.serial.is_open:
+            self.serial.close()
+            logger.info("📡 LoRa serial port closed")
+        # Note: GPIO cleanup is handled globally by hardware module
+        self.connected = False
 
 
-# Singleton instance
+# ---------------------------------------------------------------
+# Singleton
+# ---------------------------------------------------------------
 _lora_controller = None
 
 def get_lora_controller():
     """Get or create LoRa controller singleton"""
     global _lora_controller
     if _lora_controller is None:
-        _lora_controller = LoRaController()
+        try:
+            from app import config
+            port = getattr(config, 'LORA_SERIAL_PORT', '/dev/serial0')
+            baud = getattr(config, 'LORA_BAUD_RATE', 9600)
+            m0 = getattr(config, 'LORA_M0_PIN', 5)
+            m1 = getattr(config, 'LORA_M1_PIN', 6)
+            aux = getattr(config, 'LORA_AUX_PIN', 13)
+        except ImportError:
+            port, baud, m0, m1, aux = '/dev/serial0', 9600, 5, 6, 13
+
+        _lora_controller = LoRaController(port=port, baud=baud,
+                                          m0_pin=m0, m1_pin=m1, aux_pin=aux)
     return _lora_controller
 
 
+# ---------------------------------------------------------------
+# Test script
+# ---------------------------------------------------------------
 if __name__ == "__main__":
-    # Test script
-    print("LoRa Controller Test")
+    print("=" * 50)
+    print("  LoRa EBYTE UART Controller Test")
     print("=" * 50)
 
-    controller = LoRaController()
+    ctrl = LoRaController()
 
-    # Test ping
-    print("\n1. Testing ping...")
-    if controller.ping():
-        print("✅ ESP32 is responding")
+    print("\n1. Ping ESP32...")
+    if ctrl.ping():
+        print("   ✅ ESP32 responded")
     else:
-        print("❌ ESP32 not responding")
+        print("   ❌ No response (simulation mode?)")
 
-    # Get status
-    print("\n2. Getting status...")
-    status = controller.get_status()
+    print("\n2. Read module config...")
+    cfg = ctrl.read_config()
+    if cfg:
+        print(f"   Address: 0x{cfg['address']:04X}")
+        print(f"   Channel: {cfg['channel']}")
+    else:
+        print("   ⚠️ Could not read config")
+
+    print("\n3. Get status...")
+    status = ctrl.get_status()
     if status:
-        print("Current valve states:")
-        for valve, state in status.items():
-            print(f"   Valve {valve}: {'ON' if state else 'OFF'}")
+        for v, s in status.items():
+            print(f"   Valve {v}: {'ON' if s else 'OFF'}")
 
-    # Test valve control
-    print("\n3. Testing valve 1...")
-    print("   Turning ON for 10 seconds...")
-    if controller.valve_on(1, 10):
-        print("   ✅ Valve 1 turned ON")
-        time.sleep(3)
+    print("\n4. Test valve 1 ON (10s)...")
+    if ctrl.valve_on(1, 10):
+        print("   ✅ Valve 1 ON")
 
-        # Check status
-        status = controller.get_status()
-        if status and status.get(1):
-            print("   ✅ Status confirmed: Valve 1 is ON")
+    time.sleep(2)
+    print("\n5. Signal quality...")
+    q = ctrl.get_signal_quality()
+    if q:
+        print(f"   Quality: {q['quality']}%")
 
-    # Signal quality
-    print("\n4. Signal quality...")
-    quality = controller.get_signal_quality()
-    if quality:
-        print(f"   RSSI: {quality['rssi']} dBm")
-        print(f"   SNR: {quality['snr']} dB")
-        print(f"   Quality: {quality['quality']}%")
-
-    # Cleanup
-    print("\n5. Cleaning up...")
-    controller.cleanup()
-    print("✅ Test complete")
-
+    print("\n6. Cleanup...")
+    ctrl.cleanup()
+    print("✅ Done")

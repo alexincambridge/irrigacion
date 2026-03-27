@@ -1,11 +1,12 @@
-# ESP32 + LoRa + 4 Solenoid Valves - Wiring Diagrams
+# ESP32 + LoRa EBYTE UART + 4 Solenoid Valves - Wiring Diagrams
 
 ## Complete System Overview
 
 ```
 ┌─────────────────┐                LoRa Radio              ┌─────────────────┐
-│  Raspberry Pi   │◄─────────── (915/868 MHz) ────────────►│     ESP32       │
-│   + LoRa RFM95  │                                         │   + LoRa RFM95  │
+│  Raspberry Pi   │◄─────────── (868 MHz EU) ─────────────►│     ESP32       │
+│ + LoRa EBYTE    │            EBYTE E220/E32              │  + LoRa EBYTE   │
+│   (UART)        │                                         │    (UART)       │
 └─────────────────┘                                         └────────┬────────┘
                                                                      │
                                                             ┌────────▼────────┐
@@ -23,80 +24,80 @@
 
 ---
 
-## 1. Raspberry Pi to LoRa Module
+## 1. Raspberry Pi to LoRa EBYTE Module (UART)
 
 ### Pin Connections
 
 ```
-    Raspberry Pi                          RFM95/RFM96
-    GPIO Header                           LoRa Module
+    Raspberry Pi                        EBYTE E220/E32
+    GPIO Header                         LoRa Module
     
-     ┌─────┐                               ┌────────┐
-     │  ●  │ 1  - 3.3V  ────────────────► │  VCC   │
-     │  ●  │ 2  - 5V                       │        │
-     │  ○  │ 3                             │  GND   │◄─┐
-     │  ○  │ 4  - 5V                       │        │  │
-     │  ○  │ 5                             │  MISO  │◄─┤
-     │  ●  │ 6  - GND  ──────────────────► │        │  │
-     │  ○  │ 7                             │  MOSI  │◄─┤
-     │  ○  │ 8                             │        │  │
-     │  ○  │ 9  - MISO  ──────────────────► │  SCK   │◄─┤
-     │  ○  │ 10 - MOSI  ──────────────────► │        │  │
-     │  ○  │ 11 - SCK   ──────────────────► │  NSS   │◄─┤
-     │  ○  │ 12                             │        │  │
-     │  ○  │ 13                             │  RST   │◄─┤
-     │  ○  │ 14 - GND                       │        │  │
-     │  ○  │ 15                             │  DIO0  │◄─┘
-     │  ○  │ 16                             └────────┘
-     │  ○  │ 17 - 3.3V                       
-     │  ○  │ 18 - GPIO24 ──► DIO0           Connection Legend:
-     │  ○  │ 19 - MOSI                      ────►  Wire connection
-     │  ○  │ 20 - GND                       ●  Connected pin
-     │  ○  │ 21 - MISO                      ○  Unused pin
-     │  ○  │ 22 - GPIO25 ──► RST
-     │  ○  │ 23 - SCK
-     │  ○  │ 24 - GPIO8  ──► NSS
-     │  ○  │ 25 - GND
+     ┌─────┐                             ┌──────────┐
+     │  ●  │ 1  - 3.3V ────────────────► │   VCC    │
+     │  ○  │ 2  - 5V                     │          │
+     │  ○  │ 3                           │   GND    │◄──┐
+     │  ○  │ 4                           │          │   │
+     │  ○  │ 5                           │   RXD    │◄──┤── GPIO 14 (TXD)
+     │  ●  │ 6  - GND ─────────────────► │          │   │
+     │  ○  │ 7                           │   TXD    │───┤── GPIO 15 (RXD)
+     │  ●  │ 8  - GPIO14 (TXD) ────────► │          │   │
+     │  ○  │ 9                           │   AUX    │───┤── GPIO 13
+     │  ●  │ 10 - GPIO15 (RXD) ◄──────── │          │   │
+     │  ○  │ 11                           │   M0     │───┤── GPIO 5
+     │  ○  │ 12                           │          │   │
+     │  ○  │ 13                           │   M1     │───┤── GPIO 6
+     │  ○  │ 14                           │          │   │
+     │  ○  │ ...                          │  ANT     │◄─── Antenna
+     │  ○  │ 29 - GPIO5  ──► M0          └──────────┘
+     │  ○  │ 31 - GPIO6  ──► M1
+     │  ○  │ 33 - GPIO13 ◄── AUX
      └─────┘
 ```
 
 ### Connection Table
 
-| Raspberry Pi Pin | Function | RFM95 Pin |
-|-----------------|----------|-----------|
-| Pin 1 (3.3V)    | Power    | VCC       |
-| Pin 6 (GND)     | Ground   | GND       |
-| Pin 19 (GPIO10) | MOSI     | MOSI      |
-| Pin 21 (GPIO9)  | MISO     | MISO      |
-| Pin 23 (GPIO11) | SCK      | SCK       |
-| Pin 24 (GPIO8)  | CS/NSS   | NSS       |
-| Pin 22 (GPIO25) | Reset    | RST       |
-| Pin 18 (GPIO24) | Interrupt| DIO0      |
+| Raspberry Pi Pin | GPIO (BCM) | Function    | EBYTE Pin |
+|------------------|-----------|-------------|-----------|
+| Pin 1 (3.3V)     | —         | Power       | VCC       |
+| Pin 6 (GND)      | —         | Ground      | GND       |
+| Pin 8             | GPIO 14   | UART TX     | RXD       |
+| Pin 10            | GPIO 15   | UART RX     | TXD       |
+| Pin 29            | GPIO 5    | Mode M0     | M0        |
+| Pin 31            | GPIO 6    | Mode M1     | M1        |
+| Pin 33            | GPIO 13   | Busy signal | AUX       |
+
+### EBYTE Modes (M0/M1)
+
+| M0 | M1 | Mode | Description |
+|----|----|------|-------------|
+| LOW | LOW | Normal | Transparent UART TX/RX |
+| HIGH | LOW | Wake-up | Wake-up mode |
+| LOW | HIGH | Power Save | Listen only |
+| HIGH | HIGH | Sleep | Configuration mode |
 
 ---
 
-## 2. ESP32 to LoRa Module
+## 2. ESP32 to LoRa EBYTE Module (UART)
 
-### VSPI Connections
+### UART2 Connections
 
 ```
-        ESP32 DevKit                      RFM95/RFM96
+        ESP32 DevKit                      EBYTE E220/E32
         
-     ┌───────────────┐                   ┌────────┐
-     │ USB           │                   │        │
-     │               │                   │  VCC   │◄─── 3.3V
-     │           3V3 │─────────────────► │        │
-     │           GND │─────────────────► │  GND   │
-     │               │                   │        │
-     │          IO23 │─────────────────► │  MOSI  │
-     │          IO19 │─────────────────► │  MISO  │
-     │          IO18 │─────────────────► │  SCK   │
-     │          IO5  │─────────────────► │  NSS   │
-     │          IO14 │─────────────────► │  RST   │
-     │          IO2  │─────────────────► │  DIO0  │
-     │               │                   │        │
-     │          IO13 │──► Relay 1        │  ANT   │◄─── Antenna
-     │          IO12 │──► Relay 2        └────────┘
+     ┌───────────────┐                   ┌──────────┐
+     │ USB           │                   │          │
+     │               │                   │   VCC    │◄─── 3.3V
+     │           3V3 │─────────────────► │          │
+     │           GND │─────────────────► │   GND    │
+     │               │                   │          │
+     │          IO16 │─────────────────► │   RXD    │  (ESP32 TX2)
+     │          IO17 │◄───────────────── │   TXD    │  (ESP32 RX2)
+     │          IO4  │─────────────────► │   M0     │
+     │          IO2  │─────────────────► │   M1     │
+     │          IO15 │◄───────────────── │   AUX    │
+     │               │                   │          │
+     │          IO13 │──► Relay 1        │   ANT    │◄─── Antenna
+     │          IO12 │──► Relay 2        └──────────┘
      │          IO27 │──► Relay 3
      │          IO26 │──► Relay 4
      │               │
@@ -107,22 +108,21 @@
 
 ### Connection Table
 
-| ESP32 Pin | Function      | Connects To    |
-|-----------|---------------|----------------|
-| 3.3V      | Power         | LoRa VCC       |
-| GND       | Ground        | LoRa GND       |
-| GPIO23    | MOSI          | LoRa MOSI      |
-| GPIO19    | MISO          | LoRa MISO      |
-| GPIO18    | SCK           | LoRa SCK       |
-| GPIO5     | CS/NSS        | LoRa NSS       |
-| GPIO14    | Reset         | LoRa RST       |
-| GPIO2     | Interrupt     | LoRa DIO0      |
-| GPIO13    | Relay Control | Relay IN1      |
-| GPIO12    | Relay Control | Relay IN2      |
-| GPIO27    | Relay Control | Relay IN3      |
-| GPIO26    | Relay Control | Relay IN4      |
-| 5V        | Relay Power   | Relay VCC      |
-| GND       | Common Ground | Relay GND      |
+| ESP32 Pin | Function       | Connects To    |
+|-----------|----------------|----------------|
+| 3.3V      | Power          | LoRa VCC       |
+| GND       | Ground         | LoRa GND       |
+| GPIO16    | UART TX2       | LoRa RXD       |
+| GPIO17    | UART RX2       | LoRa TXD       |
+| GPIO4     | Mode M0        | LoRa M0        |
+| GPIO2     | Mode M1        | LoRa M1        |
+| GPIO15    | Busy signal    | LoRa AUX       |
+| GPIO13    | Relay Control  | Relay IN1      |
+| GPIO12    | Relay Control  | Relay IN2      |
+| GPIO27    | Relay Control  | Relay IN3      |
+| GPIO26    | Relay Control  | Relay IN4      |
+| 5V        | Relay Power    | Relay VCC      |
+| GND       | Common Ground  | Relay GND      |
 
 ---
 
@@ -240,23 +240,33 @@
 ### Full Schematic
 
 ```
-                        RASPBERRY PI + LORA
+                        RASPBERRY PI + LORA EBYTE
                         ┌──────────────────┐
                         │   RPI GPIO       │
-                        │   ┌────────┐     │
-                        │   │ RFM95  │     │
-                        │   │  LoRa  │     │
-                        │   └───┬────┘     │
+                        │   ┌────────────┐ │
+                        │   │ EBYTE E220 │ │
+                        │   │ LoRa UART  │ │
+                        │   │ GPIO14→RXD │ │
+                        │   │ GPIO15←TXD │ │
+                        │   │ GPIO5→M0   │ │
+                        │   │ GPIO6→M1   │ │
+                        │   │ GPIO13←AUX │ │
+                        │   └───┬────────┘ │
                         └───────┼──────────┘
-                                │ Antenna
+                                │ Antenna 868MHz
                                 │
                          ~ ~ ~ LoRa Radio ~ ~ ~
                                 │
                         ┌───────┼──────────┐
-                        │   ┌───▼────┐     │
-                        │   │ RFM95  │     │
-                        │   │  LoRa  │     │
-                        │   └───┬────┘     │
+                        │   ┌───▼────────┐ │
+                        │   │ EBYTE E220 │ │
+                        │   │ LoRa UART  │ │
+                        │   │ IO16→RXD   │ │
+                        │   │ IO17←TXD   │ │
+                        │   │ IO4→M0     │ │
+                        │   │ IO2→M1     │ │
+                        │   │ IO15←AUX   │ │
+                        │   └───┬────────┘ │
                         │   ESP32 DEVKIT   │
                         │   ┌───▼─────┐    │
                         │   │GPIO Pins│    │
@@ -448,20 +458,20 @@ Option 3: PCB Antenna (some modules have built-in)
 ## Bill of Materials
 
 ### Raspberry Pi Side
-- 1x Raspberry Pi (any model)
-- 1x RFM95/RFM96 LoRa module (915 or 868 MHz)
-- 1x Antenna (u.FL or SMA)
-- 8x Female-Female jumper wires
-- 1x Power supply for RPI
+- 1x Raspberry Pi 4B
+- 1x EBYTE E220/E32 LoRa UART module (868 MHz for EU)
+- 1x Antenna 868 MHz (SMA or wire 8.6 cm)
+- 7x Female-Female jumper wires (VCC, GND, TXD, RXD, M0, M1, AUX)
+- 1x Power supply for RPi (5V 3A USB-C)
 
 ### ESP32 Side
 - 1x ESP32 Development Board
-- 1x RFM95/RFM96 LoRa module (same frequency as RPI)
+- 1x EBYTE E220/E32 LoRa UART module (same frequency as RPi)
 - 1x 4-Channel Relay Module
 - 4x Solenoid Valves (12V or 24V)
 - 1x 12V/24V Power Supply (5A minimum)
 - 1x Buck Converter (12V to 5V, 3A minimum)
-- 1x Antenna (u.FL or SMA)
+- 1x Antenna 868 MHz (SMA or wire 8.6 cm)
 - 20x Jumper wires (various)
 - 4x Flyback diodes (1N4007)
 - 2x Fuses + holders
@@ -470,7 +480,7 @@ Option 3: PCB Antenna (some modules have built-in)
 
 ---
 
-**Document Version:** 1.0  
-**Last Updated:** 2026-02-24  
+**Document Version:** 2.0 (EBYTE UART)  
+**Last Updated:** 2026-03-27  
 **Created for:** Irrigation Control System
 

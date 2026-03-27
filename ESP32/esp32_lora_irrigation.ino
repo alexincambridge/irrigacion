@@ -4,27 +4,40 @@
  *
  * Hardware:
  * - ESP32 board
- * - LoRa module (SX1276/RFM95)
+ * - EBYTE E220/E32 LoRa module (UART)
  * - 4 relay modules for solenoid valves
  *
- * LoRa Pins (adjust based on your module):
- * - NSS: 5
- * - RST: 14
- * - DIO0: 2
+ * EBYTE LoRa UART Pins:
+ * - RXD → GPIO16 (ESP32 TX2)
+ * - TXD → GPIO17 (ESP32 RX2)
+ * - M0  → GPIO4
+ * - M1  → GPIO2
+ * - AUX → GPIO15
+ * - VCC → 3.3V
+ * - GND → GND
+ *
+ * Solenoid Relay Pins:
+ * - Relay 1 → GPIO13
+ * - Relay 2 → GPIO12
+ * - Relay 3 → GPIO27
+ * - Relay 4 → GPIO26
  */
 
-#include <SPI.h>
-#include <LoRa.h>
+// EBYTE LoRa UART pins
+#define LORA_RXD  16   // ESP32 TX2 → EBYTE RXD
+#define LORA_TXD  17   // ESP32 RX2 → EBYTE TXD
+#define LORA_M0   4    // Mode select M0
+#define LORA_M1   2    // Mode select M1
+#define LORA_AUX  15   // Module busy indicator
 
-// LoRa Configuration
-#define LORA_FREQUENCY 915E6  // 915 MHz for US, use 868E6 for Europe
-#define LORA_SS 5
-#define LORA_RST 14
-#define LORA_DIO0 2
+// Use Serial2 for LoRa UART
+#define LoRaSerial Serial2
+#define LORA_BAUD  9600
 
 // Solenoid Valve Pins (connected to relay modules)
 const int VALVE_PINS[4] = {13, 12, 27, 26};  // GPIO pins for 4 valves
-const char* VALVE_NAMES[4] = {"Valve 1", "Valve 2", "Valve 3", "Valve 4"};
+const char* VALVE_NAMES[4] = {"Valve 1 (Jardín)", "Valve 2 (Huerta)",
+                               "Valve 3 (Césped)", "Valve 4 (Árboles)"};
 
 // Valve states
 bool valveStates[4] = {false, false, false, false};
@@ -32,98 +45,107 @@ bool valveStates[4] = {false, false, false, false};
 // Device ID
 const String DEVICE_ID = "ESP32_IRR_001";
 
-// Command structure
-struct Command {
-  char cmd[16];      // Command type: ON, OFF, STATUS, ALL_OFF
-  int valve;         // Valve number (1-4, or 0 for all)
-  int duration;      // Duration in seconds (optional)
-};
-
 // Timer for auto-shutoff
 unsigned long valveTimers[4] = {0, 0, 0, 0};
-int valveDurations[4] = {0, 0, 0, 0};
+unsigned long valveDurations[4] = {0, 0, 0, 0};
 
+// -------------------------------------------------------
+// EBYTE mode helpers
+// -------------------------------------------------------
+void setLoRaMode(int m0, int m1) {
+  digitalWrite(LORA_M0, m0);
+  digitalWrite(LORA_M1, m1);
+  delay(100);
+  waitAux();
+}
+
+void waitAux(unsigned long timeout_ms = 3000) {
+  unsigned long start = millis();
+  while (digitalRead(LORA_AUX) == LOW) {
+    if (millis() - start > timeout_ms) {
+      Serial.println("⚠️ AUX timeout");
+      return;
+    }
+    delay(10);
+  }
+}
+
+void setNormalMode()  { setLoRaMode(LOW, LOW); }   // Transparent TX/RX
+void setSleepMode()   { setLoRaMode(HIGH, HIGH); }  // Config / sleep
+
+// -------------------------------------------------------
+// Setup
+// -------------------------------------------------------
 void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  Serial.println("ESP32 LoRa Irrigation Controller");
-  Serial.println("================================");
+  Serial.println("======================================");
+  Serial.println("  ESP32 LoRa EBYTE Irrigation Ctrl");
+  Serial.println("======================================");
+
+  // Initialize EBYTE control pins
+  pinMode(LORA_M0, OUTPUT);
+  pinMode(LORA_M1, OUTPUT);
+  pinMode(LORA_AUX, INPUT);
 
   // Initialize valve pins
   for (int i = 0; i < 4; i++) {
     pinMode(VALVE_PINS[i], OUTPUT);
-    digitalWrite(VALVE_PINS[i], LOW);  // All valves OFF initially
+    digitalWrite(VALVE_PINS[i], LOW);  // All valves OFF
   }
 
-  // Initialize LoRa
-  LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+  // Initialize LoRa UART (Serial2)
+  LoRaSerial.begin(LORA_BAUD, SERIAL_8N1, LORA_TXD, LORA_RXD);
 
-  if (!LoRa.begin(LORA_FREQUENCY)) {
-    Serial.println("LoRa initialization failed!");
-    while (1);
-  }
+  // Set normal (transparent) mode
+  setNormalMode();
 
-  // LoRa parameters for better range and reliability
-  LoRa.setSpreadingFactor(12);        // SF7 to SF12, higher = longer range
-  LoRa.setSignalBandwidth(125E3);     // 125 kHz
-  LoRa.setCodingRate4(5);             // 4/5 coding rate
-  LoRa.setTxPower(20);                // Max power 20 dBm
-  LoRa.enableCrc();                   // Enable CRC check
-
-  Serial.println("LoRa initialized successfully");
-  Serial.print("Frequency: ");
-  Serial.print(LORA_FREQUENCY / 1E6);
-  Serial.println(" MHz");
-  Serial.println("\nWaiting for commands...\n");
+  Serial.println("✅ LoRa UART initialized");
+  Serial.print("   EBYTE pins: RXD=GPIO");
+  Serial.print(LORA_RXD);
+  Serial.print(", TXD=GPIO");
+  Serial.print(LORA_TXD);
+  Serial.print(", M0=GPIO");
+  Serial.print(LORA_M0);
+  Serial.print(", M1=GPIO");
+  Serial.print(LORA_M1);
+  Serial.print(", AUX=GPIO");
+  Serial.println(LORA_AUX);
+  Serial.println("\n⏳ Waiting for commands...\n");
 }
 
+// -------------------------------------------------------
+// Main loop
+// -------------------------------------------------------
 void loop() {
-  // Check for incoming LoRa messages
-  int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    handleLoRaPacket();
+  // Check for incoming LoRa UART data
+  if (LoRaSerial.available()) {
+    String message = LoRaSerial.readStringUntil('\n');
+    message.trim();
+    if (message.length() > 0) {
+      Serial.println("📡 Received: " + message);
+      processCommand(message);
+    }
   }
 
-  // Check valve timers for auto-shutoff
+  // Check valve auto-off timers
   checkValveTimers();
 
   delay(10);
 }
 
-void handleLoRaPacket() {
-  String message = "";
-
-  // Read packet
-  while (LoRa.available()) {
-    message += (char)LoRa.read();
-  }
-
-  // Get RSSI
-  int rssi = LoRa.packetRssi();
-  float snr = LoRa.packetSnr();
-
-  Serial.println("📡 Received: " + message);
-  Serial.print("   RSSI: ");
-  Serial.print(rssi);
-  Serial.print(" dBm, SNR: ");
-  Serial.print(snr);
-  Serial.println(" dB");
-
-  // Parse and execute command
-  processCommand(message);
-}
-
+// -------------------------------------------------------
+// Command processing
+// -------------------------------------------------------
 void processCommand(String message) {
-  message.trim();
-
   // Parse command format: "CMD:VALVE:DURATION"
-  // Examples: "ON:1:300", "OFF:2", "STATUS", "ALL_OFF"
+  // Examples: "ON:1:300", "OFF:2", "STATUS", "ALL_OFF", "PING"
 
   int firstColon = message.indexOf(':');
   int secondColon = message.indexOf(':', firstColon + 1);
 
-  String cmd = message.substring(0, firstColon);
+  String cmd = message.substring(0, firstColon > 0 ? firstColon : message.length());
   String valveStr = "";
   String durationStr = "";
 
@@ -134,8 +156,6 @@ void processCommand(String message) {
     } else {
       valveStr = message.substring(firstColon + 1);
     }
-  } else {
-    cmd = message;
   }
 
   int valve = valveStr.toInt();
@@ -162,10 +182,13 @@ void processCommand(String message) {
   }
   else {
     sendResponse("ERROR:INVALID_COMMAND");
-    Serial.println("❌ Invalid command");
+    Serial.println("❌ Unknown command: " + cmd);
   }
 }
 
+// -------------------------------------------------------
+// Valve control
+// -------------------------------------------------------
 void turnValveOn(int index, int duration) {
   if (index < 0 || index >= 4) return;
 
@@ -174,18 +197,18 @@ void turnValveOn(int index, int duration) {
 
   if (duration > 0) {
     valveTimers[index] = millis();
-    valveDurations[index] = duration * 1000;  // Convert to milliseconds
+    valveDurations[index] = (unsigned long)duration * 1000UL;
     Serial.print("✅ ");
     Serial.print(VALVE_NAMES[index]);
     Serial.print(" ON (auto-off in ");
     Serial.print(duration);
-    Serial.println(" seconds)");
+    Serial.println("s)");
   } else {
     valveTimers[index] = 0;
     valveDurations[index] = 0;
     Serial.print("✅ ");
     Serial.print(VALVE_NAMES[index]);
-    Serial.println(" ON (manual mode)");
+    Serial.println(" ON (manual)");
   }
 }
 
@@ -220,6 +243,9 @@ void checkValveTimers() {
   }
 }
 
+// -------------------------------------------------------
+// Responses via LoRa UART
+// -------------------------------------------------------
 void sendStatus() {
   String status = "STATUS:";
   for (int i = 0; i < 4; i++) {
@@ -228,21 +254,11 @@ void sendStatus() {
   }
   sendResponse(status);
 
-  Serial.println("📊 Status sent:");
-  for (int i = 0; i < 4; i++) {
-    Serial.print("   ");
-    Serial.print(VALVE_NAMES[i]);
-    Serial.print(": ");
-    Serial.println(valveStates[i] ? "ON" : "OFF");
-  }
+  Serial.println("📊 Status sent");
 }
 
 void sendResponse(String response) {
-  LoRa.beginPacket();
-  LoRa.print(response);
-  LoRa.endPacket();
-
-  Serial.println("📤 Sent: " + response);
-  Serial.println();
+  waitAux();
+  LoRaSerial.println(response);  // println adds \n terminator
+  Serial.println("📤 TX: " + response);
 }
-

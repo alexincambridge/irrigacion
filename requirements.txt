@@ -3,7 +3,6 @@ flask-login
 adafruit-circuitpython-dht
 RPi.GPIO
 
-# LoRa Communication (for ESP32 control)
-pyLoRa>=0.4.0
-spidev>=3.5
+# LoRa Communication (EBYTE UART module)
+pyserial>=3.5
 
