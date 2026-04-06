@@ -45,3 +45,10 @@ PERIPHERALS = {
     "fertilizer_counter": {"name": "Contador Fertilizante", "type": "sensor", "gpio": 18},
 }
 
+# --------------------
+# TELEGRAM NOTIFICATIONS
+# --------------------
+NOTIFICATIONS_ENABLED = True
+TELEGRAM_BOT_TOKEN = "PEGA_TU_NUEVO_TOKEN_AQUI"  # Regenera en @BotFather y pega aquí
+TELEGRAM_CHAT_ID = "790404313"
+

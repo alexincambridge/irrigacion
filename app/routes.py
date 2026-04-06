@@ -428,6 +428,7 @@ def schedule_list():
 def schedule_delete(schedule_id):
 
     from app.hardware_manager import zone_off, zone_state
+    from app.notifications import notify_irrigation_cancelled
 
     db = get_db()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -462,6 +463,9 @@ def schedule_delete(schedule_id):
                   AND scheduled_id = ?
             """, (now_str, sector, schedule_id))
 
+            # Telegram notification
+            notify_irrigation_cancelled(sector, "Cancelado por usuario")
+
     # Delete the schedule
     db.execute("""
         DELETE FROM irrigation_schedule
@@ -478,30 +482,50 @@ def schedule_delete(schedule_id):
 def irrigation_manual(sector):
 
     from app.hardware_manager import zone_on, zone_off, zone_state
+    from app.notifications import notify_irrigation_completed
 
     db = get_db()
 
     is_active = zone_state(sector)
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     if is_active:
         zone_off(sector)
+
+        # Get start_time before closing the log to calculate duration
+        log_row = db.execute("""
+            SELECT start_time FROM irrigation_log
+            WHERE sector = ? AND end_time IS NULL
+            ORDER BY id DESC LIMIT 1
+        """, (sector,)).fetchone()
+
         db.execute("""
             UPDATE irrigation_log
             SET end_time = ?
             WHERE sector = ? AND end_time IS NULL
-        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), sector))
+        """, (now_str, sector))
+        db.commit()
+
+        # Calculate duration and send Telegram notification
+        if log_row:
+            start = log_row[0]
+            try:
+                start_dt = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+                duration = int((datetime.now() - start_dt).total_seconds() / 60)
+            except Exception:
+                duration = None
+            notify_irrigation_completed(sector, start, now_str, duration, "manual")
     else:
         zone_on(sector)
         db.execute("""
             INSERT INTO irrigation_log (sector, start_time, type)
             VALUES (?, ?, 'manual')
-        """, (sector, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-
-    db.commit()
+        """, (sector, now_str))
+        db.commit()
 
     return jsonify({
         "success": True,
-        "active": not is_active,  # Return new state
+        "active": not is_active,
         "sector": sector
     })
 
@@ -667,6 +691,7 @@ def history_list():
 def emergency_stop():
     try:
         from app.hardware_manager import all_off
+        from app.notifications import notify_emergency_stop
 
         all_off()
 
@@ -688,6 +713,9 @@ def emergency_stop():
         """)
 
         db.commit()
+
+        # Telegram notification
+        notify_emergency_stop()
 
         return jsonify({
             "success": True,

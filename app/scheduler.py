@@ -1,5 +1,6 @@
 from datetime import datetime
 from app.hardware_manager import zone_on, zone_off, zone_state
+from app.notifications import notify_irrigation_completed, notify_irrigation_started
 import sqlite3
 
 import time
@@ -69,6 +70,15 @@ def scheduler_loop():
                         VALUES (?, ?, ?, 'programado', ?, ?, 'completado')
                     """, (sector, f"{today} {start_time}", f"{today} {end_time}", schedule_id, duration))
 
+                    # 📱 Telegram: riego programado completado
+                    notify_irrigation_completed(
+                        sector,
+                        f"{today} {start_time}",
+                        f"{today} {end_time}",
+                        duration,
+                        "programado"
+                    )
+
                 # Marcar como desactivado
                 cur.execute("""
                     UPDATE irrigation_schedule
@@ -92,6 +102,9 @@ def scheduler_loop():
                             VALUES (?, ?, 'programado', ?, ?, 'activo')
                         """, (sector, now_datetime, schedule["id"], schedule["duration_minutes"]))
                         conn.commit()
+
+                        # 📱 Telegram: riego programado iniciado
+                        notify_irrigation_started(sector, "programado")
 
                 else:
                     # Only deactivate if there's no manual irrigation in progress
