@@ -357,8 +357,42 @@ def schedule_list():
 @login_required
 def schedule_delete(schedule_id):
 
-    db = get_db()
+    from app.hardware_manager import zone_off, zone_state
 
+    db = get_db()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    today = datetime.now().strftime("%Y-%m-%d")
+    now_time = datetime.now().strftime("%H:%M")
+
+    # Get schedule info before deleting so we can stop the zone if it's active
+    schedule = db.execute("""
+        SELECT sector, start_time, end_time
+        FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,)).fetchone()
+
+    if schedule:
+        sector = schedule["sector"] if hasattr(schedule, "keys") else schedule[0]
+        start_time = schedule["start_time"] if hasattr(schedule, "keys") else schedule[1]
+        end_time = schedule["end_time"] if hasattr(schedule, "keys") else schedule[2]
+
+        # Check if this schedule is currently active (running right now)
+        if start_time <= now_time and (end_time is None or end_time > now_time):
+            # Turn off the zone GPIO
+            if zone_state(sector):
+                zone_off(sector)
+
+            # Close the irrigation log for this schedule
+            db.execute("""
+                UPDATE irrigation_log
+                SET end_time = ?, status = 'cancelado'
+                WHERE sector = ?
+                  AND type = 'programado'
+                  AND end_time IS NULL
+                  AND scheduled_id = ?
+            """, (now_str, sector, schedule_id))
+
+    # Delete the schedule
     db.execute("""
         DELETE FROM irrigation_schedule
         WHERE id = ?
@@ -441,7 +475,37 @@ def get_schedules():
 @routes.route("/irrigation/schedule/<int:schedule_id>", methods=["DELETE"])
 @login_required
 def delete_schedule(schedule_id):
+    from app.hardware_manager import zone_off, zone_state
+
     db = get_db()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_time = datetime.now().strftime("%H:%M")
+
+    # Get schedule info before deleting
+    schedule = db.execute("""
+        SELECT sector, start_time, end_time
+        FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,)).fetchone()
+
+    if schedule:
+        sector = schedule[0]
+        start_time = schedule[1]
+        end_time = schedule[2]
+
+        # If the schedule is currently active, stop the zone
+        if start_time and start_time <= now_time and (end_time is None or end_time > now_time):
+            if zone_state(sector):
+                zone_off(sector)
+
+            db.execute("""
+                UPDATE irrigation_log
+                SET end_time = ?, status = 'cancelado'
+                WHERE sector = ?
+                  AND type = 'programado'
+                  AND end_time IS NULL
+            """, (now_str, sector))
+
     db.execute("DELETE FROM irrigation_schedule WHERE id=?", (schedule_id,))
     db.commit()
     return jsonify({"success": True})
@@ -536,18 +600,28 @@ def emergency_stop():
 
         all_off()
 
-        # Update database - close all open irrigation logs
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         db = get_db()
+
+        # Close all open irrigation logs (manual AND scheduled)
         db.execute("""
             UPDATE irrigation_log
-            SET end_time = ?
+            SET end_time = ?, status = 'cancelado'
             WHERE end_time IS NULL
-        """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+        """, (now_str,))
+
+        # Disable ALL active scheduled irrigations so the scheduler doesn't re-activate them
+        db.execute("""
+            UPDATE irrigation_schedule
+            SET enabled = 0, status = 'cancelado'
+            WHERE enabled = 1
+        """)
+
         db.commit()
 
         return jsonify({
             "success": True,
-            "message": "All zones stopped"
+            "message": "All zones and schedules stopped"
         })
     except Exception as e:
         return jsonify({

@@ -315,6 +315,9 @@ async function deleteSchedule(id) {
                     }
                 }, 300);
             }
+            // Reload zones to reflect the zone being turned off
+            loadZones();
+            loadHistory();
         } else {
             showToast("Error al cancelar riego", 'error');
         }
@@ -698,7 +701,7 @@ async function toggleZone(zoneId) {
 }
 
 async function emergencyStop() {
-    if (!confirm('¿Detener TODAS las zonas de riego inmediatamente?')) {
+    if (!confirm('¿Detener TODAS las zonas de riego inmediatamente?\nEsto también cancelará todos los riegos programados.')) {
         return;
     }
 
@@ -708,8 +711,10 @@ async function emergencyStop() {
         });
 
         if (response.ok) {
-            showToast('🚨 TODAS las zonas han sido detenidas', 'warning');
+            showToast('🚨 TODAS las zonas y riegos programados han sido detenidos', 'warning');
             loadZones();
+            loadSchedules();
+            loadHistory();
         } else {
             showToast('Error al ejecutar parada de emergencia', 'error');
         }
@@ -933,27 +938,7 @@ function renderSchedules(schedules) {
     container.innerHTML = html;
 }
 
-async function deleteSchedule(id) {
-    if (!confirm('¿Cancelar este riego programado?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`/irrigation/schedule/delete/${id}`, {
-            method: "DELETE"
-        });
-
-        if (response.ok) {
-            showToast("Riego cancelado", 'success');
-            loadSchedules();
-        } else {
-            showToast("Error al cancelar riego", 'error');
-        }
-    } catch (error) {
-        console.error("Error deleting schedule:", error);
-        showToast("Error de conexión", 'error');
-    }
-}
+// deleteSchedule is defined above — this duplicate is removed to avoid override
 
 function clearForm() {
     const dateEl = document.getElementById("date");
