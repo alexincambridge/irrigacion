@@ -103,7 +103,8 @@ def init_database():
             pressure REAL,
             ec REAL,
             ph REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 

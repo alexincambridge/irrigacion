@@ -29,12 +29,22 @@ def dashboard():
 @login_required
 def dashboard_data():
     db = get_db()
-    sensor = db.execute("""
-        SELECT temperature, humidity, solar, pressure, ec, ph, timestamp
-        FROM sensor_data
-        ORDER BY timestamp DESC
-        LIMIT 1
-    """).fetchone()
+
+    # sensor_data may have 'created_at' or 'timestamp' depending on DB version
+    sensor = None
+    for ts_col in ("created_at", "timestamp"):
+        if sensor is not None:
+            break
+        try:
+            sensor = db.execute(f"""
+                SELECT temperature, humidity, solar, pressure, ec, ph, {ts_col}
+                FROM sensor_data
+                ORDER BY id DESC
+                LIMIT 1
+            """).fetchone()
+        except Exception:
+            continue
+
     water = db.execute("SELECT SUM(liters) FROM water_consumption").fetchone()
     dht = db.execute("""
         SELECT temperature, humidity
@@ -59,35 +69,95 @@ def dashboard_data():
 @routes.route("/dashboard/history")
 @login_required
 def dashboard_history():
-    """Obtener histórico de sensores de las últimas 24 horas"""
+    """Obtener histórico de sensores de las últimas 24 horas.
+    Combina datos reales del DHT22 (dht_readings) con sensor_data."""
     try:
         db = get_db()
         from datetime import datetime, timedelta
 
-        # Últimas 24 horas
         since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
 
-        rows = db.execute("""
-            SELECT temperature, humidity, pressure, solar, ec, ph, timestamp
-            FROM sensor_data
-            WHERE timestamp > ?
-            ORDER BY timestamp ASC
-            LIMIT 500
-        """, (since,)).fetchall()
+        # ── 1. DHT22 readings (real temp & humidity) ──
+        dht_rows = []
+        try:
+            dht_rows = db.execute("""
+                SELECT temperature, humidity, created_at
+                FROM dht_readings
+                WHERE created_at > ?
+                ORDER BY created_at ASC
+                LIMIT 500
+            """, (since,)).fetchall()
+        except Exception as e:
+            print(f"[dashboard_history] dht_readings error: {e}")
 
-        history = []
-        for row in rows:
-            history.append({
-                "temperature": row[0],
-                "humidity": row[1],
-                "pressure": row[2],
-                "solar": row[3],
-                "ec": row[4],
-                "ph": row[5],
-                "timestamp": row[6]
-            })
+        # ── 2. sensor_data (pressure, solar, ec, ph) ──
+        sensor_rows = []
+        for ts_col in ("created_at", "timestamp"):
+            if sensor_rows:
+                break
+            try:
+                sensor_rows = db.execute(f"""
+                    SELECT temperature, humidity, pressure, solar, ec, ph, {ts_col}
+                    FROM sensor_data
+                    WHERE {ts_col} > ?
+                    ORDER BY {ts_col} ASC
+                    LIMIT 500
+                """, (since,)).fetchall()
+            except Exception:
+                continue
 
-        return jsonify(history)
+        # ── 3. Build unified timeline keyed by minute ──
+        def ts_key(ts_str):
+            if not ts_str:
+                return None
+            s = str(ts_str)
+            if '.' in s:
+                s = s.split('.')[0]
+            return s[:16]  # "YYYY-MM-DD HH:MM"
+
+        timeline = {}
+
+        for row in dht_rows:
+            key = ts_key(row[2])
+            if not key:
+                continue
+            if key not in timeline:
+                timeline[key] = {
+                    "temperature": None, "humidity": None,
+                    "pressure": None, "solar": None,
+                    "ec": None, "ph": None, "timestamp": str(row[2])
+                }
+            timeline[key]["temperature"] = row[0]
+            timeline[key]["humidity"] = row[1]
+
+        for row in sensor_rows:
+            key = ts_key(row[6])
+            if not key:
+                continue
+            if key not in timeline:
+                timeline[key] = {
+                    "temperature": None, "humidity": None,
+                    "pressure": None, "solar": None,
+                    "ec": None, "ph": None, "timestamp": str(row[6])
+                }
+            entry = timeline[key]
+            if entry["temperature"] is None:
+                entry["temperature"] = row[0]
+            if entry["humidity"] is None:
+                entry["humidity"] = row[1]
+            if row[2] is not None:
+                entry["pressure"] = row[2]
+            if row[3] is not None:
+                entry["solar"] = row[3]
+            if row[4] is not None:
+                entry["ec"] = row[4]
+            if row[5] is not None:
+                entry["ph"] = row[5]
+
+        # ── 4. Sort and return ──
+        history = [timeline[k] for k in sorted(timeline.keys())]
+        return jsonify(history[:500])
+
     except Exception as e:
         print(f"Error fetching dashboard history: {e}")
         return jsonify({"error": str(e)}), 500

@@ -336,17 +336,26 @@ async function loadHistoricalData() {
     var response = await fetch('/dashboard/history');
     if (!response.ok) return;
     var data = await response.json();
-    if (!data || data.length === 0) return;
+    if (!data || data.error || data.length === 0) {
+      console.log("📊 No historical data available yet");
+      return;
+    }
 
     var labels = [], tempData = [], humData = [], presData = [], solData = [];
 
     data.forEach(function(record) {
-      var time = new Date(record.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      // Handle SQLite datetime format "YYYY-MM-DD HH:MM:SS" by replacing space with T
+      var ts = record.timestamp || '';
+      if (ts.indexOf('T') === -1 && ts.indexOf(' ') > -1) {
+        ts = ts.replace(' ', 'T');
+      }
+      var dateObj = new Date(ts);
+      var time = isNaN(dateObj.getTime()) ? ts.slice(11, 16) : dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       labels.push(time);
-      tempData.push(record.temperature || null);
-      humData.push(record.humidity || null);
-      presData.push(record.pressure || null);
-      solData.push(record.solar || null);
+      tempData.push(record.temperature !== null && record.temperature !== undefined ? record.temperature : null);
+      humData.push(record.humidity !== null && record.humidity !== undefined ? record.humidity : null);
+      presData.push(record.pressure !== null && record.pressure !== undefined ? record.pressure : null);
+      solData.push(record.solar !== null && record.solar !== undefined ? record.solar : null);
     });
 
     if (historyChart) {

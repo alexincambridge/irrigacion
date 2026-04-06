@@ -41,7 +41,7 @@ def generate_sensor_data():
             # Insertar en BD
             cur.execute("""
                 INSERT INTO sensor_data 
-                (temperature, humidity, solar, pressure, ec, ph, timestamp)
+                (temperature, humidity, solar, pressure, ec, ph, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (temperature, humidity, solar, pressure, ec, ph,
                   timestamp.strftime("%Y-%m-%d %H:%M:%S")))
