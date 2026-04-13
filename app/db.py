@@ -8,12 +8,13 @@ DB_PATH = os.path.join(BASE_DIR, "instance", "irrigation.db")
 _migrated = False
 
 def _ensure_columns(conn):
-    """Auto-migrate: add missing columns to sensor_data for backward compatibility."""
+    """Auto-migrate: add missing columns/tables for backward compatibility."""
     global _migrated
     if _migrated:
         return
     try:
         cur = conn.cursor()
+        # sensor_data timestamp compatibility
         cols = [row[1] for row in cur.execute("PRAGMA table_info(sensor_data)").fetchall()]
         if "timestamp" not in cols and "created_at" in cols:
             cur.execute("ALTER TABLE sensor_data ADD COLUMN timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP")

@@ -907,7 +907,7 @@ def system_internet_check():
 @routes.route("/system/esp32-devices")
 @login_required
 def system_esp32_devices():
-    """Scan for ESP32 devices on the network"""
+    """Scan for ESP32 WROOM devices on the network"""
     import socket
 
     # Get local network
@@ -923,7 +923,6 @@ def system_esp32_devices():
     devices = []
 
     # Check for known ESP32 devices (you can expand this list)
-    # In a real scenario, you'd scan the network or check a configuration
     known_esp32_ips = [
         f"{network_prefix}.100",
         f"{network_prefix}.101",
@@ -1160,4 +1159,5 @@ def pump_off_route():
         return jsonify({"success": True, "message": "Bomba apagada"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
 

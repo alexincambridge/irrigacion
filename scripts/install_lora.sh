@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# ESP32 LoRa Irrigation System - Installation Script
-# This script helps automate the Raspberry Pi setup
+# ESP32 WROOM LoRa Irrigation System - Installation Script
+# Uses EBYTE E220/E32 UART LoRa module for RPi <-> ESP32 communication
 
 echo "================================================"
-echo "  ESP32 LoRa Irrigation System - RPI Setup"
+echo "  ESP32 WROOM LoRa Irrigation System - RPI Setup"
+echo "  (EBYTE UART LoRa Module)"
 echo "================================================"
 echo ""
 
@@ -18,14 +19,16 @@ if ! grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null; then
     fi
 fi
 
-echo "Step 1: Checking SPI interface..."
-if lsmod | grep -q spi_bcm2835; then
-    echo "✅ SPI is enabled"
+echo "Step 1: Checking UART interface..."
+if ls /dev/serial0 2>/dev/null || ls /dev/ttyAMA0 2>/dev/null; then
+    echo "✅ UART is available"
 else
-    echo "❌ SPI is not enabled"
-    echo "Please enable SPI:"
+    echo "❌ UART is not enabled"
+    echo "Please enable UART:"
     echo "  sudo raspi-config"
-    echo "  → Interface Options → SPI → Enable"
+    echo "  → Interface Options → Serial Port"
+    echo "  → Login shell: No"
+    echo "  → Hardware serial: Yes"
     echo "  → Reboot"
     exit 1
 fi
@@ -46,23 +49,9 @@ sudo apt-get update
 sudo apt-get install -y python3-pip python3-dev git libgpiod2
 
 echo ""
-echo "Step 4: Installing Python LoRa library..."
-echo "Choose installation method:"
-echo "  1) Install from GitHub (recommended)"
-echo "  2) Skip (already installed)"
-read -r choice
-
-if [ "$choice" = "1" ]; then
-    cd ~
-    if [ -d "pySX127x" ]; then
-        echo "pySX127x directory already exists, removing..."
-        rm -rf pySX127x
-    fi
-    git clone https://github.com/mayeranalytics/pySX127x.git
-    cd pySX127x
-    sudo python3 setup.py install
-    echo "✅ LoRa library installed"
-fi
+echo "Step 4: Installing Python LoRa UART dependencies..."
+pip3 install pyserial RPi.GPIO
+echo "✅ pyserial and RPi.GPIO installed"
 
 echo ""
 echo "Step 5: Installing project dependencies..."

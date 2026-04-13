@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """
-Test script for LoRa communication with ESP32
-Run this on Raspberry Pi to test LoRa connectivity
+Test script for LoRa communication with ESP32 WROOM
+Run this on Raspberry Pi to test LoRa connectivity via EBYTE UART module
+
+Usage: python3 scripts/test_lora.py
+       (run from the project root directory)
 """
 
 import sys
+import os
 import time
+
+# Add project root to path so we can import app modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app.lora_controller import LoRaController
 
 def print_header(text):
@@ -144,9 +152,9 @@ def main():
         print("\n⚠️  WARNING: LoRa module not initialized")
         print("Running in simulation mode for testing")
         print("\nIf this is unexpected, check:")
-        print("  1. LoRa module connections")
-        print("  2. SPI is enabled (sudo raspi-config)")
-        print("  3. pyLoRa library is installed")
+        print("  1. LoRa EBYTE module connections (M0, M1, AUX, RXD, TXD)")
+        print("  2. UART is enabled (sudo raspi-config → Serial Port)")
+        print("  3. pyserial is installed (pip install pyserial)")
 
     print("\nStarting tests...\n")
 
