@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
 from app.db import get_db
+from app.extensions import limiter
 from datetime import datetime
 
 routes = Blueprint("routes", __name__)
@@ -211,6 +212,7 @@ def fertilization():
 
 @routes.route("/api/fertilize", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def apply_fertilizer():
     """Apply a fertilization recipe (activates Zone 4 + peristaltic pump)"""
     try:
@@ -253,6 +255,7 @@ def apply_fertilizer():
 # Crear riego programado
 @routes.route("/irrigation/schedule/add", methods=["POST"])
 @login_required
+@limiter.limit("20 per minute")
 def schedule_add():
     try:
 
@@ -479,10 +482,11 @@ def schedule_delete(schedule_id):
 
 @routes.route("/irrigation/manual/<int:sector>", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute")
 def irrigation_manual(sector):
 
     from app.hardware_manager import zone_on, zone_off, zone_state
-    from app.notifications import notify_irrigation_completed
+    from app.notifications import notify_irrigation_completed, notify_irrigation_started
 
     db = get_db()
 
@@ -501,7 +505,7 @@ def irrigation_manual(sector):
 
         db.execute("""
             UPDATE irrigation_log
-            SET end_time = ?
+            SET end_time = ?, status = 'completado'
             WHERE sector = ? AND end_time IS NULL
         """, (now_str, sector))
         db.commit()
@@ -522,6 +526,9 @@ def irrigation_manual(sector):
             VALUES (?, ?, 'manual')
         """, (sector, now_str))
         db.commit()
+
+        # 📱 Telegram: riego manual iniciado
+        notify_irrigation_started(sector, "manual")
 
     return jsonify({
         "success": True,
@@ -688,6 +695,7 @@ def history_list():
 # Emergency stop - turn off all zones
 @routes.route("/irrigation/emergency-stop", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def emergency_stop():
     try:
         from app.hardware_manager import all_off
@@ -1138,6 +1146,7 @@ def peripherals_status():
 
 @routes.route("/api/pump/on", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def pump_on_route():
     """Turn on peristaltic pump"""
     try:
@@ -1151,6 +1160,7 @@ def pump_on_route():
 
 @routes.route("/api/pump/off", methods=["POST"])
 @login_required
+@limiter.limit("10 per minute")
 def pump_off_route():
     """Turn off peristaltic pump"""
     try:

@@ -1,5 +1,6 @@
 flask
 flask-login
+flask-limiter
 adafruit-circuitpython-dht
 RPi.GPIO
 

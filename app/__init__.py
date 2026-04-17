@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_login import LoginManager
 
+from app.extensions import limiter
 from app.auth import auth, init_login_manager
 from app.routes import routes
 from app.irrigation import irrigation
@@ -15,6 +16,9 @@ def create_app():
     all_off()
 
     app.secret_key = "dev-secret"
+
+    # Rate limiting
+    limiter.init_app(app)
 
     app.register_blueprint(auth)
     app.register_blueprint(routes)

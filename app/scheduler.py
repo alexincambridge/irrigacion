@@ -53,7 +53,11 @@ def scheduler_loop():
                 end_time = row["end_time"]
                 duration = row["duration_minutes"]
 
-                # Buscar si ya está registrado
+                # Apagar la zona si sigue encendida
+                if zone_state(sector):
+                    zone_off(sector)
+
+                # Buscar si ya está registrado (evitar duplicados)
                 existing_log = cur.execute("""
                     SELECT id FROM irrigation_log
                     WHERE sector = ?
@@ -70,7 +74,7 @@ def scheduler_loop():
                         VALUES (?, ?, ?, 'programado', ?, ?, 'completado')
                     """, (sector, f"{today} {start_time}", f"{today} {end_time}", schedule_id, duration))
 
-                    # 📱 Telegram: riego programado completado
+                    # 📱 Telegram: riego programado completado (solo 1 vez)
                     notify_irrigation_completed(
                         sector,
                         f"{today} {start_time}",
@@ -107,7 +111,7 @@ def scheduler_loop():
                         notify_irrigation_started(sector, "programado")
 
                 else:
-                    # Only deactivate if there's no manual irrigation in progress
+                    # No active schedule and no manual — zone should be off
                     # Check if there's an active manual irrigation for this sector
                     manual_active = cur.execute("""
                         SELECT id FROM irrigation_log
@@ -120,6 +124,7 @@ def scheduler_loop():
                     if zone_state(sector) and not manual_active:
                         zone_off(sector)
 
+                        # Close any orphaned programmed logs (no Telegram — already notified above)
                         cur.execute("""
                             UPDATE irrigation_log
                             SET end_time = ?, status = 'completado'

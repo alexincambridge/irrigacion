@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_user, logout_user, LoginManager
 from app.models import User
+from app.extensions import limiter
 
 auth = Blueprint("auth", __name__)
 
@@ -18,6 +19,7 @@ def init_login_manager(login_manager):
 
 
 @auth.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def login():
     if request.method == "POST":
         u = request.form["username"]
