@@ -50,6 +50,27 @@ def generate_sensor_data():
         print(f"✅ Se generaron 48 registros de datos de sensores")
         print(f"   Período: últimas 24 horas")
         print(f"   Sensores: Temperatura, Humedad, Solar, Presión, EC, pH")
+
+        # ── También generar datos DHT22 (dht_readings) ──
+        try:
+            for i in range(144):  # cada 10 min durante 24h
+                timestamp = now - timedelta(hours=24) + timedelta(minutes=i*10)
+                hour = timestamp.hour
+                # Simular temperatura realista según hora del día
+                base_temp = 18 + 8 * max(0, 1 - abs(hour - 14) / 8)
+                temperature = round(base_temp + random.uniform(-2, 2), 1)
+                humidity = round(60 + 15 * max(0, 1 - abs(hour - 6) / 8) + random.uniform(-5, 5), 1)
+
+                cur.execute("""
+                    INSERT INTO dht_readings (temperature, humidity, created_at)
+                    VALUES (?, ?, ?)
+                """, (temperature, humidity, timestamp.strftime("%Y-%m-%d %H:%M:%S")))
+
+            conn.commit()
+            print(f"✅ Se generaron 144 registros DHT22 (dht_readings)")
+        except Exception as e:
+            print(f"⚠️  dht_readings: {e} (tabla puede no existir)")
+
         return True
 
     except Exception as e:

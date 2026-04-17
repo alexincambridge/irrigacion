@@ -70,8 +70,15 @@ function initializeGauges() {
 }
 
 function createGauge(elementId, config) {
-  var element = document.querySelector('#' + elementId);
-  if (!element) return null;
+  var element = document.getElementById(elementId);
+  if (!element) {
+    console.warn("Gauge element not found: #" + elementId);
+    return null;
+  }
+  // Ensure container has dimensions so ApexCharts doesn't complain
+  if (!element.style.minHeight) {
+    element.style.minHeight = (config.height || 120) + 'px';
+  }
 
   var options = {
     chart: {
@@ -357,10 +364,11 @@ async function loadHistoricalData() {
     var response = await fetch('/dashboard/history');
     if (!response.ok) return;
     var data = await response.json();
-    if (!data || data.error || data.length === 0) {
-      console.log("📊 No historical data available yet");
+    if (!data || data.error || !Array.isArray(data) || data.length === 0) {
+      console.log("📊 No historical data available yet (records: " + (data ? data.length : 0) + ")");
       return;
     }
+    console.log("📊 Historical data loaded: " + data.length + " records");
 
     var labels = [], tempData = [], humData = [], presData = [], solData = [];
 
