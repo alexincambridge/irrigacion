@@ -304,19 +304,40 @@ function initializeChart() {
       toolbar: { show: true, tools: { download: true, zoom: true, pan: true } }
     },
     series: [
-      { name: 'Temperatura (°C)', data: [], color: '#ef4444' },
-      { name: 'Humedad (%)', data: [], color: '#3b82f6' },
-      { name: 'Presión (hPa)', data: [], color: '#8b5cf6' },
-      { name: 'Solar (W/m²)', data: [], color: '#f59e0b' }
+      { name: 'Temperatura (°C)', data: [] },
+      { name: 'Humedad (%)', data: [] },
+      { name: 'Presión (hPa)', data: [] },
+      { name: 'Solar (W/m²)', data: [] }
     ],
-    stroke: { width: 3, curve: 'smooth' },
+    colors: ['#ef4444', '#3b82f6', '#8b5cf6', '#f59e0b'],
+    stroke: { width: [3, 3, 2, 2], curve: 'smooth' },
     xaxis: {
       categories: [],
       labels: { rotate: -45, style: { fontSize: '11px' } }
     },
     yaxis: [
-      { title: { text: 'Temp/Hum' }, labels: { formatter: function(v) { return v ? v.toFixed(1) : ''; } } },
-      { opposite: true, title: { text: 'Presión/Solar' }, labels: { formatter: function(v) { return v ? v.toFixed(0) : ''; } } }
+      {
+        seriesName: 'Temperatura (°C)',
+        title: { text: 'Temp (°C) / Hum (%)' },
+        labels: { formatter: function(v) { return v !== null && v !== undefined ? v.toFixed(1) : ''; } },
+        min: 0, max: 100
+      },
+      {
+        seriesName: 'Humedad (%)',
+        show: false,
+        min: 0, max: 100
+      },
+      {
+        opposite: true,
+        seriesName: 'Presión (hPa)',
+        title: { text: 'Presión (hPa)' },
+        labels: { formatter: function(v) { return v !== null && v !== undefined ? v.toFixed(0) : ''; } }
+      },
+      {
+        opposite: true,
+        seriesName: 'Solar (W/m²)',
+        show: false
+      }
     ],
     legend: { position: 'top', horizontalAlign: 'center' },
     grid: { borderColor: '#e5e7eb', strokeDashArray: 4 },
@@ -361,14 +382,13 @@ async function loadHistoricalData() {
     if (historyChart) {
       historyChart.updateOptions({
         series: [
-          { name: 'Temperatura (°C)', data: tempData, color: '#ef4444' },
-          { name: 'Humedad (%)', data: humData, color: '#3b82f6' },
-          { name: 'Presión (hPa)', data: presData, color: '#8b5cf6' },
-          { name: 'Solar (W/m²)', data: solData, color: '#f59e0b' }
+          { name: 'Temperatura (°C)', data: tempData },
+          { name: 'Humedad (%)', data: humData },
+          { name: 'Presión (hPa)', data: presData },
+          { name: 'Solar (W/m²)', data: solData }
         ],
         xaxis: { categories: labels }
-      }, false);
-      historyChart.render();
+      }, true, true);
     }
   } catch (error) {
     console.error('Error loading historical data:', error);
