@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=pi
+User=alexdev
 WorkingDirectory=/home/alexdev/Documents/irrigacion
-ExecStart=/usr/bin/python3 /home/alexdev/Documents/irrigacion/run.py
+ExecStart=/home/alexdev/Documents/irrigacion/venv/bin/python3 /home/alexdev/Documents/irrigacion/run.py
 Restart=always
 RestartSec=10
 
