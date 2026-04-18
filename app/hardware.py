@@ -13,6 +13,12 @@ ZONE_PINS = {
 
 PUMP_PIN = 17  # Peristaltic pump for fertilization
 
+# ACTIVE LOW CONFIGURATION
+# Set to True if your relays turn ON with LOW and OFF with HIGH (typical for 4-channel relay modules)
+ACTIVE_LOW = True
+RELAY_ON = GPIO.LOW if ACTIVE_LOW else GPIO.HIGH
+RELAY_OFF = GPIO.HIGH if ACTIVE_LOW else GPIO.LOW
+
 _pump_active = False
 _pump_timer = None
 _gpio_initialized = False
@@ -34,18 +40,18 @@ def _init_gpio():
 
         GPIO.setwarnings(False)
 
-        # Initialize all zone pins as OUTPUT, LOW
+        # Initialize all zone pins as OUTPUT, set to RELAY_OFF
         for zone_id, pin in ZONE_PINS.items():
             try:
-                GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
-                logger.info(f"[HW] ✅ GPIO {pin} inicializado (Zona {zone_id})")
+                GPIO.setup(pin, GPIO.OUT, initial=RELAY_OFF)
+                logger.info(f"[HW] ✅ GPIO {pin} inicializado a OFF (Zona {zone_id})")
             except Exception as e:
                 logger.error(f"[HW] ❌ Error inicializando GPIO {pin}: {e}")
 
-        # Initialize pump pin
+        # Initialize pump pin (assuming Active HIGH for pump unless it's on the same relay board)
         try:
             GPIO.setup(PUMP_PIN, GPIO.OUT, initial=GPIO.LOW)
-            logger.info(f"[HW] ✅ Pump GPIO {PUMP_PIN} inicializado")
+            logger.info(f"[HW] ✅ Pump GPIO {PUMP_PIN} inicializado a OFF")
         except Exception as e:
             logger.error(f"[HW] ❌ Error inicializando pump GPIO {PUMP_PIN}: {e}")
 
@@ -71,7 +77,7 @@ def zone_on(zone_id, duration=0):
         return False
 
     try:
-        GPIO.output(pin, GPIO.HIGH)
+        GPIO.output(pin, RELAY_ON)
         logger.info(f"[HW] ✅ Zona {zone_id} ON (GPIO {pin})")
         return True
     except Exception as e:
@@ -88,7 +94,7 @@ def zone_off(zone_id):
         return False
 
     try:
-        GPIO.output(pin, GPIO.LOW)
+        GPIO.output(pin, RELAY_OFF)
         logger.info(f"[HW] ✅ Zona {zone_id} OFF (GPIO {pin})")
         return True
     except Exception as e:
@@ -102,7 +108,7 @@ def zone_state(zone_id):
     if pin is None:
         return False
     try:
-        return GPIO.input(pin) == GPIO.HIGH
+        return GPIO.input(pin) == RELAY_ON
     except Exception:
         return False
 
