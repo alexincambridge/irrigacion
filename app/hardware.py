@@ -122,7 +122,15 @@ def zone_off(zone_id):
 
 
 def zone_state(zone_id):
-    return zone_id in _active_zones
+    """Check if zone is active — reads actual GPIO pin state"""
+    pin = ZONE_PINS.get(zone_id)
+    if pin is None:
+        return False
+    try:
+        return GPIO.input(pin) == GPIO.HIGH
+    except Exception:
+        # Fallback to in-memory tracking
+        return zone_id in _active_zones
 
 
 def all_off():

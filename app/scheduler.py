@@ -2,10 +2,15 @@ from datetime import datetime
 from app.hardware_manager import zone_on, zone_off, zone_state
 from app.notifications import notify_irrigation_completed, notify_irrigation_started
 import sqlite3
-
+import os
 import time
+import logging
 
-DB_PATH = "instance/irrigation.db"
+logger = logging.getLogger(__name__)
+
+# Use absolute path (same as app/db.py)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "instance", "irrigation.db")
 DEFAULT_DURATION = 1
 
 _last_run = None
@@ -111,32 +116,37 @@ def scheduler_loop():
                         notify_irrigation_started(sector, "programado")
 
                 else:
-                    # No active schedule and no manual — zone should be off
-                    # Check if there's an active manual irrigation for this sector
-                    manual_active = cur.execute("""
-                        SELECT id FROM irrigation_log
-                        WHERE sector = ?
-                          AND type = 'manual'
-                          AND end_time IS NULL
-                        LIMIT 1
-                    """, (sector,)).fetchone()
+                    # No active schedule for this sector
+                    # ONLY turn off if zone is on AND there's no manual irrigation active
+                    if zone_state(sector):
+                        manual_active = cur.execute("""
+                            SELECT id FROM irrigation_log
+                            WHERE sector = ?
+                              AND type = 'manual'
+                              AND end_time IS NULL
+                            LIMIT 1
+                        """, (sector,)).fetchone()
 
-                    if zone_state(sector) and not manual_active:
-                        zone_off(sector)
+                        if manual_active:
+                            # Manual irrigation running — don't touch it
+                            pass
+                        else:
+                            # No manual, no schedule — orphaned zone, turn off
+                            logger.info(f"[Scheduler] Zona {sector} encendida sin schedule ni manual → apagando")
+                            zone_off(sector)
 
-                        # Close any orphaned programmed logs (no Telegram — already notified above)
-                        cur.execute("""
-                            UPDATE irrigation_log
-                            SET end_time = ?, status = 'completado'
-                            WHERE end_time IS NULL
-                              AND sector = ?
-                              AND type = 'programado'
-                        """, (now_datetime, sector))
-                        conn.commit()
+                            cur.execute("""
+                                UPDATE irrigation_log
+                                SET end_time = ?, status = 'completado'
+                                WHERE end_time IS NULL
+                                  AND sector = ?
+                                  AND type = 'programado'
+                            """, (now_datetime, sector))
+                            conn.commit()
 
             conn.close()
 
         except Exception as e:
-            print("Scheduler error:", e)
+            logger.error(f"Scheduler error: {e}")
 
         time.sleep(10)
