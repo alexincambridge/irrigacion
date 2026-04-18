@@ -13,7 +13,6 @@ ZONE_PINS = {
 
 PUMP_PIN = 17  # Peristaltic pump for fertilization
 
-_active_zones = set()
 _pump_active = False
 _pump_timer = None
 _gpio_initialized = False
@@ -27,33 +26,25 @@ def _init_gpio():
         return
 
     try:
-        # Set GPIO mode if not already set
         try:
             if GPIO.getmode() is None:
                 GPIO.setmode(GPIO.BCM)
         except RuntimeError:
-            # GPIO mode already set, that's fine
             pass
 
         GPIO.setwarnings(False)
 
-        # Initialize all zone pins
+        # Initialize all zone pins as OUTPUT, LOW
         for zone_id, pin in ZONE_PINS.items():
             try:
-                # Always try to setup, RPi.GPIO handles re-setup gracefully
-                GPIO.setup(pin, GPIO.OUT)
-                # Set to LOW (safe default)
-                GPIO.output(pin, GPIO.LOW)
+                GPIO.setup(pin, GPIO.OUT, initial=GPIO.LOW)
                 logger.info(f"[HW] ✅ GPIO {pin} inicializado (Zona {zone_id})")
             except Exception as e:
                 logger.error(f"[HW] ❌ Error inicializando GPIO {pin}: {e}")
-                continue
 
         # Initialize pump pin
         try:
-            GPIO.setup(PUMP_PIN, GPIO.OUT)
-            # Set to LOW (safe default)
-            GPIO.output(PUMP_PIN, GPIO.LOW)
+            GPIO.setup(PUMP_PIN, GPIO.OUT, initial=GPIO.LOW)
             logger.info(f"[HW] ✅ Pump GPIO {PUMP_PIN} inicializado")
         except Exception as e:
             logger.error(f"[HW] ❌ Error inicializando pump GPIO {PUMP_PIN}: {e}")
@@ -72,7 +63,7 @@ _init_gpio()
 
 def zone_on(zone_id, duration=0):
     """Turn on a zone/valve"""
-    _init_gpio()  # Ensure GPIO is initialized
+    _init_gpio()
 
     pin = ZONE_PINS.get(zone_id)
     if pin is None:
@@ -80,15 +71,7 @@ def zone_on(zone_id, duration=0):
         return False
 
     try:
-        # Ensure pin is configured as OUTPUT
-        try:
-            GPIO.setup(pin, GPIO.OUT)
-        except RuntimeError:
-            # Already setup, that's fine
-            pass
-
         GPIO.output(pin, GPIO.HIGH)
-        _active_zones.add(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} ON (GPIO {pin})")
         return True
     except Exception as e:
@@ -98,22 +81,14 @@ def zone_on(zone_id, duration=0):
 
 def zone_off(zone_id):
     """Turn off a zone/valve"""
-    _init_gpio()  # Ensure GPIO is initialized
+    _init_gpio()
 
     pin = ZONE_PINS.get(zone_id)
     if pin is None:
         return False
 
     try:
-        # Ensure pin is configured as OUTPUT
-        try:
-            GPIO.setup(pin, GPIO.OUT)
-        except RuntimeError:
-            # Already setup, that's fine
-            pass
-
         GPIO.output(pin, GPIO.LOW)
-        _active_zones.discard(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} OFF (GPIO {pin})")
         return True
     except Exception as e:
@@ -129,13 +104,13 @@ def zone_state(zone_id):
     try:
         return GPIO.input(pin) == GPIO.HIGH
     except Exception:
-        # Fallback to in-memory tracking
-        return zone_id in _active_zones
+        return False
 
 
 def all_off():
-    for zone in list(_active_zones):
-        zone_off(zone)
+    """Turn off ALL zones (reads all pins, not just in-memory set)"""
+    for zone_id in ZONE_PINS:
+        zone_off(zone_id)
     pump_off()
 
 
@@ -144,26 +119,19 @@ def pump_on(duration_seconds=0):
     """Turn on peristaltic pump with optional auto-off"""
     global _pump_active, _pump_timer
 
-    _init_gpio()  # Ensure GPIO is initialized
+    _init_gpio()
 
     if _pump_timer:
         _pump_timer.cancel()
         _pump_timer = None
 
     try:
-        # Ensure pin is configured as OUTPUT
-        try:
-            GPIO.setup(PUMP_PIN, GPIO.OUT)
-        except RuntimeError:
-            # Already setup, that's fine
-            pass
-
         GPIO.output(PUMP_PIN, GPIO.HIGH)
         _pump_active = True
         logger.info(f"[HW] ✅ Bomba peristáltica ON (GPIO {PUMP_PIN})")
 
         if duration_seconds > 0:
-            max_dur = 3600  # Hard limit 60 min
+            max_dur = 3600
             duration_seconds = min(duration_seconds, max_dur)
             _pump_timer = threading.Timer(duration_seconds, pump_off)
             _pump_timer.daemon = True
@@ -180,20 +148,13 @@ def pump_off():
     """Turn off peristaltic pump"""
     global _pump_active, _pump_timer
 
-    _init_gpio()  # Ensure GPIO is initialized
+    _init_gpio()
 
     if _pump_timer:
         _pump_timer.cancel()
         _pump_timer = None
 
     try:
-        # Ensure pin is configured as OUTPUT
-        try:
-            GPIO.setup(PUMP_PIN, GPIO.OUT)
-        except RuntimeError:
-            # Already setup, that's fine
-            pass
-
         GPIO.output(PUMP_PIN, GPIO.LOW)
         _pump_active = False
         logger.info(f"[HW] ✅ Bomba peristáltica OFF")
@@ -210,10 +171,11 @@ def pump_state():
 
 def get_hardware_info():
     """Get hardware configuration and status"""
+    active = [z for z in ZONE_PINS if zone_state(z)]
     return {
         'mode': 'GPIO',
         'zones': len(ZONE_PINS),
-        'active_zones': list(_active_zones),
+        'active_zones': active,
         'pump_active': _pump_active
     }
 
@@ -224,6 +186,5 @@ def check_connection():
 
 
 def get_all_zones_status():
-    """Get status of all zones"""
-    return {zone_id: zone_id in _active_zones for zone_id in ZONE_PINS.keys()}
-
+    """Get status of all zones — reads actual GPIO"""
+    return {zone_id: zone_state(zone_id) for zone_id in ZONE_PINS}
