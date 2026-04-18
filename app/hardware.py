@@ -19,6 +19,7 @@ ACTIVE_LOW = True
 RELAY_ON = GPIO.LOW if ACTIVE_LOW else GPIO.HIGH
 RELAY_OFF = GPIO.HIGH if ACTIVE_LOW else GPIO.LOW
 
+_active_zones = set()
 _pump_active = False
 _pump_timer = None
 _gpio_initialized = False
@@ -44,13 +45,15 @@ def _init_gpio():
         for zone_id, pin in ZONE_PINS.items():
             try:
                 GPIO.setup(pin, GPIO.OUT, initial=RELAY_OFF)
+                _active_zones.discard(zone_id)
                 logger.info(f"[HW] ✅ GPIO {pin} inicializado a OFF (Zona {zone_id})")
             except Exception as e:
                 logger.error(f"[HW] ❌ Error inicializando GPIO {pin}: {e}")
 
-        # Initialize pump pin (assuming Active HIGH for pump unless it's on the same relay board)
+        # Initialize pump pin
         try:
             GPIO.setup(PUMP_PIN, GPIO.OUT, initial=GPIO.LOW)
+            _pump_active = False
             logger.info(f"[HW] ✅ Pump GPIO {PUMP_PIN} inicializado a OFF")
         except Exception as e:
             logger.error(f"[HW] ❌ Error inicializando pump GPIO {PUMP_PIN}: {e}")
@@ -78,6 +81,7 @@ def zone_on(zone_id, duration=0):
 
     try:
         GPIO.output(pin, RELAY_ON)
+        _active_zones.add(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} ON (GPIO {pin})")
         return True
     except Exception as e:
@@ -95,6 +99,7 @@ def zone_off(zone_id):
 
     try:
         GPIO.output(pin, RELAY_OFF)
+        _active_zones.discard(zone_id)
         logger.info(f"[HW] ✅ Zona {zone_id} OFF (GPIO {pin})")
         return True
     except Exception as e:
@@ -103,18 +108,12 @@ def zone_off(zone_id):
 
 
 def zone_state(zone_id):
-    """Check if zone is active — reads actual GPIO pin state"""
-    pin = ZONE_PINS.get(zone_id)
-    if pin is None:
-        return False
-    try:
-        return GPIO.input(pin) == RELAY_ON
-    except Exception:
-        return False
+    """Check if zone is active from internal state"""
+    return zone_id in _active_zones
 
 
 def all_off():
-    """Turn off ALL zones (reads all pins, not just in-memory set)"""
+    """Turn off ALL zones"""
     for zone_id in ZONE_PINS:
         zone_off(zone_id)
     pump_off()
