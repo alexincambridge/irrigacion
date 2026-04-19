@@ -1,5 +1,5 @@
 🌱 Irrigación
-![irrigation.jpg](images/irrigation.jpg)
+![irrigation.jpg](../images/irrigation.jpg)
 
 ESP32 + Sensores ──LoRa──► Raspberry Pi ──► SQLite ──► Dashboard
 

@@ -5,13 +5,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 ZONE_PINS = {
-    1: 16,  # sector 1 - Jardín
+    1: 17,  # sector 1 - Jardn
     2: 23,  # sector 2 - Huerta
-    3: 24,  # sector 3 - Césped
-    4: 26,  # sector 4 - Árboles
+    3: 25,  # sector 3 - Csped
+    4: 27,  # sector 4 - rboles
 }
 
-PUMP_PIN = 17  # Peristaltic pump for fertilization
+PUMP_PIN = 16  # Changed to 16, as 17 is now a relay
 
 # ACTIVE LOW CONFIGURATION
 # Set to True if your relays turn ON with LOW and OFF with HIGH (typical for 4-channel relay modules)
