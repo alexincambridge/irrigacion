@@ -13,10 +13,10 @@ def test_zones():
         import RPi.GPIO as GPIO
 
         ZONE_PINS = {
-            1: 23,  # Jardín
-            2: 24,  # Huerta
-            3: 25,  # Césped
-            4: 27,  # Árboles
+            1: 22,  # Jardn
+            2: 23,  # Huerta
+            3: 25,  # Csped
+            4: 27,  # rboles
         }
 
         PUMP_PIN = 16
