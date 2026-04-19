@@ -1,5 +1,5 @@
-import sqlite3
 import os
+import sqlite3
 from flask import g
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
