@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 ZONE_PINS = {
-    1: 17,  # sector 1 - Jardn
+    1: 22,  # sector 1 - Jardn (Changed from 17)
     2: 23,  # sector 2 - Huerta
     3: 25,  # sector 3 - Csped
     4: 27,  # sector 4 - rboles

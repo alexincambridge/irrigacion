@@ -19,7 +19,7 @@ def test_zones():
             4: 27,  # Árboles
         }
 
-        PUMP_PIN = 17
+        PUMP_PIN = 16
 
         print("🔧 Inicializando GPIO...")
         GPIO.setmode(GPIO.BCM)
