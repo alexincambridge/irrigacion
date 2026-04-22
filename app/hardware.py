@@ -15,9 +15,9 @@ PUMP_PIN = 17  # Changed to 17
 
 # ACTIVE LOW CONFIGURATION
 # Set to True if your relays turn ON with LOW and OFF with HIGH (typical for 4-channel relay modules)
-ACTIVE_LOW = False
-RELAY_ON = GPIO.LOW if ACTIVE_LOW else GPIO.HIGH
-RELAY_OFF = GPIO.HIGH if ACTIVE_LOW else GPIO.LOW
+ACTIVE_LOW = True
+RELAY_ON = GPIO.HIGH if ACTIVE_LOW else GPIO.HIGH
+RELAY_OFF = GPIO.LOW if ACTIVE_LOW else GPIO.HIGH
 
 _active_zones = set()
 _pump_active = False
