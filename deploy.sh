@@ -91,7 +91,7 @@ ssh "$RPI_USER@$RPI_HOST" bash -s <<REMOTE
     git pull origin "$BRANCH" 2>&1
 
     echo "  → Instalando dependencias..."
-    pip3 install -r requirements.txt --quiet 2>&1
+    pip3 install -r requirements.txt --break-system-packages --quiet 2>&1
 
     echo "  → Migrando base de datos..."
     python3 scripts/migrate_db.py 2>&1 || true
