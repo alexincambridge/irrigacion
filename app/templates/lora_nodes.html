@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Nodos Lora{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-broadcast-tower text-primary me-2"></i>Nodos LoRa</h2>
+        <button class="btn btn-primary" onclick="fetchNodes()">
+            <i class="fas fa-sync-alt me-1"></i> Actualizar
+        </button>
+    </div>
+
+    <!-- Stats summary -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted text-uppercase mb-1">Total Detectados</h6>
+                    <h2 class="display-5 text-primary mb-0" id="totalSensors">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted text-uppercase mb-1">Estado Hub UART</h6>
+                    <h2 class="h5 text-success mb-0 mt-3" id="hubStatus">
+                        <i class="fas fa-check-circle me-1"></i> Escuchando
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" id="nodes-container">
+        <div class="col-12 text-center py-5" id="nodes-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Buscando tramas LoRa...</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function fetchNodes() {
+        try {
+            const btn = document.querySelector('button[onclick="fetchNodes()"]');
+            const icon = btn.querySelector('i');
+            icon.classList.add('fa-spin');
+
+            const resp = await fetch('/api/lora-nodes');
+            const data = await resp.json();
+
+            const container = document.getElementById('nodes-container');
+            icon.classList.remove('fa-spin');
+
+            if (!data.success) {
+                console.error("Error fetching nodes:", data.error);
+                return;
+            }
+
+            // Update summary
+            document.getElementById('totalSensors').innerText = data.nodes.length;
+
+            if (data.nodes.length === 0) {
+                container.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                        <div>
+                            <h5 class="mb-1">No se detectaron nodos</h5>
+                            <p class="mb-0">El hub LoRa está escuchando, pero no ha recibido datos de ningún ESP32 o sensor aún.</p>
+                        </div>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = ''; // Clear items
+
+            data.nodes.forEach(node => {
+                let metricsHtml = '';
+                let hasKeyValues = false;
+
+                // Exclude generic keys if we have a parsed payload
+                for (const [key, value] of Object.entries(node.data)) {
+                    if (key !== 'raw' && key !== 'id' && key !== 'node' && key !== 'payload') {
+                        hasKeyValues = true;
+
+                        // Select an icon based on key heuristic
+                        let propIcon = 'fa-tag';
+                        if(key.toLowerCase().includes('temp') || key.toLowerCase() === 't') propIcon = 'fa-thermometer-half text-danger';
+                        if(key.toLowerCase().includes('hum') || key.toLowerCase() === 'h') propIcon = 'fa-tint text-info';
+                        if(key.toLowerCase().includes('bat') || key.toLowerCase() === 'v') propIcon = 'fa-battery-full text-success';
+
+                        metricsHtml += `
+                            <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                                <span class="text-muted fw-bold small"><i class="fas ${propIcon} me-2" style="width:16px;"></i>${key.toUpperCase()}</span>
+                                <span class="fw-bold">${value}</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                // If the parser didn't find any key=value format, fallback to showing raw payload
+                if (!hasKeyValues) {
+                    metricsHtml = `
+                    <div class="bg-light p-2 rounded text-muted small font-monospace" style="word-break: break-all;">
+                        ${node.raw || node.data.payload || "Sin datos descifrables"}
+                    </div>`;
+                }
+
+                // Determine node icon and name
+                let nodeIcon = 'fa-microchip';
+                let displayName = node.id;
+
+                if (displayName.toLowerCase().includes('mac') || displayName.toLowerCase().includes('laptop')) {
+                    nodeIcon = 'fa-laptop';
+                } else if (displayName.toLowerCase().includes('pico')) {
+                    nodeIcon = 'fa-network-wired';
+                }
+
+                let isFresh = true;
+                if(node.last_seen) {
+                    const diff = new Date() - new Date(node.last_seen.replace(' ', 'T'));
+                    if (diff > 5 * 60 * 1000) isFresh = false; // Older than 5 minutes
+                }
+
+                const card = `
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-header bg-white ${isFresh ? 'border-primary' : ''} border-bottom border-3 d-flex justify-content-between align-items-center py-3">
+                            <h5 class="mb-0 text-dark"><i class="fas ${nodeIcon} text-primary me-2"></i> ${displayName}</h5>
+                            <span class="badge ${isFresh ? 'bg-success' : 'bg-secondary'} rounded-pill">
+                                ${isFresh ? 'Activo' : 'Inactivo'}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            ${metricsHtml}
+                        </div>
+                        <div class="card-footer bg-light border-0 text-muted small text-end pt-3 pb-3">
+                            <i class="far fa-clock me-1"></i> Último msj: ${node.last_seen || 'Desconocido'}
+                        </div>
+                    </div>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', card);
+            });
+
+        } catch (e) {
+            console.error("Error UI LoRa:", e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchNodes();
+        // Poll every 3 seconds for almost-realtime updates
+        setInterval(fetchNodes, 3000);
+    });
+</script>
+{% endblock %}

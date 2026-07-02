@@ -358,22 +358,55 @@ class LoRaController:
                 buffer = self.serial.read(self.serial.in_waiting)
                 text = buffer.decode('utf-8', errors='ignore')
 
-                # Inicializar contadores si no existen
+                # Inicializar contadores y memoria de nodos si no existen
                 if not hasattr(self, 'received_messages_count'):
                     self.received_messages_count = 0
                 if not hasattr(self, 'seen_devices'):
                     self.seen_devices = set()
+                if not hasattr(self, 'nodes_data'):
+                    self.nodes_data = {}
+
+                import json
+                from datetime import datetime
 
                 for line in text.split('\n'):
                     line = line.strip()
                     if line:
                         self.received_messages_count += 1
                         logger.info(f"📨 LoRa INCOMING: {line}")
-                        # Intentar identificar dispositivo (muy básico)
-                        if "ESP32" in line or "Mac" in line or "Pico" in line:
-                            self.seen_devices.add("Nodo Sensor/Sim")
-                        else:
-                            self.seen_devices.add("Dispositivo Desconocido")
+
+                        node_id = "Desconocido"
+                        parsed_data = {"raw": line}
+
+                        try:
+                            # 1. Formato JSON: {"node": "Node1", "temp": 24.5, "hum": 60}
+                            if line.startswith("{") and line.endswith("}"):
+                                data = json.loads(line)
+                                node_id = str(data.get("id", data.get("node", "Node_JSON")))
+                                parsed_data = data
+                            # 2. Formato Texto Clave-Valor: Nodo1: T=24.5, H=60
+                            elif ":" in line:
+                                parts = line.split(":", 1)
+                                node_id = parts[0].strip()
+                                payload = parts[1].strip()
+                                parsed_data = {"payload": payload}
+                                for item in payload.split(","):
+                                    if "=" in item:
+                                        k, v = item.split("=", 1)
+                                        parsed_data[k.strip()] = v.strip()
+                            # 3. Simple texto con identificadores
+                            else:
+                                if "ESP32" in line or "Mac" in line or "Pico" in line:
+                                    node_id = line.split()[0] if " " in line else line
+                        except Exception:
+                            pass
+
+                        self.seen_devices.add(node_id)
+                        self.nodes_data[node_id] = {
+                            "last_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "data": parsed_data,
+                            "raw": line
+                        }
 
                 self.last_response = text.strip() or self.last_response
             else:

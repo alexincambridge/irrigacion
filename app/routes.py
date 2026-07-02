@@ -1002,6 +1002,42 @@ def system_logs_count():
     count = db.execute("SELECT COUNT(*) FROM irrigation_log").fetchone()
     return jsonify({"count": count[0] or 0})
 
+@routes.route("/lora-nodes")
+@login_required
+def lora_nodes():
+    """Página para visualizar todos los nodos LoRa conectados y sus datos"""
+    return render_template("lora_nodes.html")
+
+@routes.route("/api/lora-nodes")
+@login_required
+def api_lora_nodes():
+    """API endpoint to get parsed data from all connected LoRa nodes"""
+    try:
+        from app.lora_controller import get_lora_controller
+        lora = get_lora_controller()
+
+        # Ensure we poll if there are new bytes before returning
+        if lora and lora.connected:
+            lora.poll_incoming()
+
+        nodes = getattr(lora, 'nodes_data', {})
+
+        result = []
+        for node_id, info in nodes.items():
+            result.append({
+                "id": node_id,
+                "last_seen": info.get("last_seen"),
+                "data": info.get("data", {}),
+                "raw": info.get("raw", "")
+            })
+
+        # Sort so oldest seen are last
+        result = sorted(result, key=lambda x: x["last_seen"], reverse=True)
+
+        return jsonify({"success": True, "nodes": result})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------
 # PERIPHERALS / HEALTH CHECK
 # --------------------
