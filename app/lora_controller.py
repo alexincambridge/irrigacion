@@ -58,6 +58,7 @@ class LoRaController:
         self.connected = False
         self.last_response = None
         self.last_rssi = None
+        self.activity_state = "Modo escucha"
 
         self._init_gpio()
         self._init_serial()
@@ -142,9 +143,12 @@ class LoRaController:
         Returns:
             Response string or None
         """
+        self.activity_state = "Enviando datos..."
         if not self.connected or not self.serial:
             logger.info(f"[SIM] Would send: {command}")
-            return self._simulate_response(command)
+            resp = self._simulate_response(command)
+            self.activity_state = "Modo escucha"
+            return resp
 
         try:
             self._set_mode(MODE_NORMAL)
@@ -174,13 +178,16 @@ class LoRaController:
                 response = buffer.decode('utf-8', errors='replace').strip()
                 self.last_response = response
                 logger.info(f"📡 LoRa RX: {response}")
+                self.activity_state = "Modo escucha"
                 return response
 
             logger.warning(f"⏱️ Timeout waiting for response to: {command}")
+            self.activity_state = "Modo escucha"
             return None
 
         except Exception as e:
             logger.error(f"❌ LoRa send error: {e}")
+            self.activity_state = "Error en puerto"
             return None
 
     def _simulate_response(self, command):
@@ -334,6 +341,45 @@ class LoRaController:
         if self.last_response:
             return {'rssi': -60, 'quality': 67}
         return None
+
+    def get_activity_state(self):
+        """Return the current activity state"""
+        return self.activity_state
+
+    def poll_incoming(self):
+        """Lectura no bloqueante para atrapar mensajes espontáneos (ej: Laptop/Sensores)"""
+        if not self.serial or not self.connected:
+            return
+
+        try:
+            if self.serial.in_waiting > 0:
+                # Marcar estado y leer buffer
+                self.activity_state = "Recibiendo mensajes..."
+                buffer = self.serial.read(self.serial.in_waiting)
+                text = buffer.decode('utf-8', errors='ignore')
+
+                # Inicializar contadores si no existen
+                if not hasattr(self, 'received_messages_count'):
+                    self.received_messages_count = 0
+                if not hasattr(self, 'seen_devices'):
+                    self.seen_devices = set()
+
+                for line in text.split('\n'):
+                    line = line.strip()
+                    if line:
+                        self.received_messages_count += 1
+                        logger.info(f"📨 LoRa INCOMING: {line}")
+                        # Intentar identificar dispositivo (muy básico)
+                        if "ESP32" in line or "Mac" in line or "Pico" in line:
+                            self.seen_devices.add("Nodo Sensor/Sim")
+                        else:
+                            self.seen_devices.add("Dispositivo Desconocido")
+
+                self.last_response = text.strip() or self.last_response
+            else:
+                self.activity_state = "Modo escucha"
+        except Exception as e:
+            logger.error(f"Error polling LoRa: {e}")
 
     # -------------------------------------------------------
     # Cleanup

@@ -43,7 +43,7 @@ def scheduler_loop():
 
             # Buscar riegos que ya terminaron
             finished_rows = cur.execute("""
-                SELECT id, sector, start_time, end_time, duration_minutes
+                SELECT id, sector, start_time, end_time, duration_minutes, repeat_enabled, repeat_days
                 FROM irrigation_schedule
                 WHERE date = ?
                   AND enabled = 1
@@ -88,12 +88,38 @@ def scheduler_loop():
                         "programado"
                     )
 
-                # Marcar como desactivado
-                cur.execute("""
-                    UPDATE irrigation_schedule
-                    SET enabled = 0
-                    WHERE id = ?
-                """, (schedule_id,))
+                repeat_enabled = row["repeat_enabled"]
+                repeat_days = row["repeat_days"]
+
+                if repeat_enabled and repeat_days:
+                    from datetime import timedelta
+                    days_map = {'L': 0, 'M': 1, 'X': 2, 'J': 3, 'V': 4, 'S': 5, 'D': 6}
+                    allowed_weekdays = [days_map[d] for d in repeat_days if d in days_map]
+
+                    next_date_str = None
+                    if allowed_weekdays:
+                        current_date = datetime.strptime(today, "%Y-%m-%d")
+                        for i in range(1, 8):
+                            next_date = current_date + timedelta(days=i)
+                            if next_date.weekday() in allowed_weekdays:
+                                next_date_str = next_date.strftime("%Y-%m-%d")
+                                break
+
+                    if next_date_str:
+                        cur.execute("""
+                            UPDATE irrigation_schedule
+                            SET date = ?, status = 'en espera'
+                            WHERE id = ?
+                        """, (next_date_str, schedule_id))
+                    else:
+                        cur.execute("UPDATE irrigation_schedule SET enabled = 0 WHERE id = ?", (schedule_id,))
+                else:
+                    # Marcar como desactivado
+                    cur.execute("""
+                        UPDATE irrigation_schedule
+                        SET enabled = 0
+                        WHERE id = ?
+                    """, (schedule_id,))
 
                 conn.commit()
 
