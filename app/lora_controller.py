@@ -47,7 +47,7 @@ MODE_SLEEP      = (1, 1)  # M0=HIGH, M1=HIGH → Sleep / configuration mode
 class LoRaController:
     """LoRa UART communication controller for EBYTE E220/E32 modules"""
 
-    def __init__(self, port='/dev/serial0', baud=9600,
+    def __init__(self, port='/dev/ttyS0', baud=9600,
                  m0_pin=5, m1_pin=6, aux_pin=13):
         self.port = port
         self.baud = baud
@@ -404,13 +404,13 @@ def get_lora_controller():
     if _lora_controller is None:
         try:
             from app import config
-            port = getattr(config, 'LORA_SERIAL_PORT', '/dev/serial0')
+            port = getattr(config, 'LORA_SERIAL_PORT', '/dev/ttyS0')
             baud = getattr(config, 'LORA_BAUD_RATE', 9600)
             m0 = getattr(config, 'LORA_M0_PIN', 5)
             m1 = getattr(config, 'LORA_M1_PIN', 6)
             aux = getattr(config, 'LORA_AUX_PIN', 13)
         except ImportError:
-            port, baud, m0, m1, aux = '/dev/serial0', 9600, 5, 6, 13
+            port, baud, m0, m1, aux = '/dev/ttyS0', 9600, 5, 6, 13
 
         _lora_controller = LoRaController(port=port, baud=baud,
                                           m0_pin=m0, m1_pin=m1, aux_pin=aux)

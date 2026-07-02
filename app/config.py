@@ -23,7 +23,7 @@ LORA_RX_PIN = 15   # GPIO 15 (RPi RXD) → TXD del módulo LoRa
 LORA_M0_PIN = 5    # GPIO 5 → M0 (modo operación)
 LORA_M1_PIN = 6    # GPIO 6 → M1 (modo operación)
 LORA_AUX_PIN = 13  # GPIO 13 → AUX (estado del módulo)
-LORA_SERIAL_PORT = '/dev/serial0'  # UART hardware RPi
+LORA_SERIAL_PORT = '/dev/ttyS0'  # UART hardware RPi
 LORA_BAUD_RATE = 9600  # Baud rate por defecto EBYTE
 LORA_ADDRESS = 0x0001  # Dirección del RPi
 LORA_CHANNEL = 23  # Canal LoRa (410.125 + 23 = 433.125 MHz para EU)
