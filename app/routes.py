@@ -324,7 +324,7 @@ def schedule_list():
                 AND datetime(date || ' ' || end_time) <= ?
             """, (current_datetime,)).fetchall()
 
-            # Registrar en log y reprogramar o eliminar
+            # Registrar en log y eliminar/reprogramar
             for row in vencidos:
                 schedule_id = row[0]
                 sector = row[1]
@@ -334,7 +334,7 @@ def schedule_list():
                 repeat_days = row[5] if len(row) > 5 else ''
                 repeat_enabled = row[6] if len(row) > 6 else 0
 
-                # Registrar finalización en log
+                # Registrar finalización en log si no está ya registrado
                 try:
                     db.execute("""
                         INSERT OR IGNORE INTO irrigation_log 
@@ -343,6 +343,7 @@ def schedule_list():
                     """, (sector, f"{now.strftime('%Y-%m-%d')} {start_time}",
                           f"{now.strftime('%Y-%m-%d')} {end_time}", schedule_id, duration_minutes))
                 except:
+                    # Si falla, usar campos básicos
                     db.execute("""
                         INSERT OR IGNORE INTO irrigation_log (sector, start_time, end_time, type)
                         VALUES (?, ?, ?, 'programado')
@@ -357,9 +358,7 @@ def schedule_list():
                     selected_days = [days_map[d] for d in str(repeat_days) if d in days_map]
 
                     if selected_days:
-                        next_date = now + timedelta(days=1) # Empezar desde mañana
-
-                        # Buscar el siguiente día en un máximo de 7 iteraciones
+                        next_date = now + timedelta(days=1)
                         for _ in range(7):
                             if next_date.weekday() in selected_days:
                                 break
@@ -372,10 +371,9 @@ def schedule_list():
                             WHERE id = ?
                         """, (new_date_str, schedule_id))
                     else:
-                        # Si no hay días válidos, desactivar
                         db.execute("UPDATE irrigation_schedule SET enabled = 0 WHERE id = ?", (schedule_id,))
                 else:
-                    # Marcar como no activo si no se repite
+                    # Marcar como no activo
                     db.execute("""
                         UPDATE irrigation_schedule
                         SET enabled = 0
@@ -428,4 +426,793 @@ def schedule_list():
             for r in rows:
                 # Calcular end_time como start_time + 30 min (default)
                 start_h, start_m = map(int, r[3].split(':'))
-                end_m = start_h
+                end_m = start_m + 30
+                end_h = start_h + (end_m // 60)
+                end_m = end_m % 60
+                end_time = f"{end_h:02d}:{end_m:02d}"
+
+                schedules.append({
+                    "id": r[0],
+                    "sector": r[1],
+                    "date": r[2],
+                    "start_time": r[3],
+                    "end_time": end_time,
+                    "duration_minutes": 30,
+                    "priority": 0,
+                    "status": "en espera",
+                    "repeat_days": "",
+                    "repeat_enabled": 0,
+                    "origin": "manual",
+                    "enabled": 1
+                })
+
+        return jsonify(schedules)
+    except Exception as e:
+        print(f"Error in schedule_list: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@routes.route("/irrigation/schedule/delete/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def schedule_delete(schedule_id):
+
+    from app.hardware_manager import zone_off, zone_state
+    from app.notifications import notify_irrigation_cancelled
+
+    db = get_db()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    today = datetime.now().strftime("%Y-%m-%d")
+    now_time = datetime.now().strftime("%H:%M")
+
+    # Get schedule info before deleting so we can stop the zone if it's active
+    schedule = db.execute("""
+        SELECT sector, start_time, end_time
+        FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,)).fetchone()
+
+    if schedule:
+        sector = schedule["sector"] if hasattr(schedule, "keys") else schedule[0]
+        start_time = schedule["start_time"] if hasattr(schedule, "keys") else schedule[1]
+        end_time = schedule["end_time"] if hasattr(schedule, "keys") else schedule[2]
+
+        # Check if this schedule is currently active (running right now)
+        if start_time <= now_time and (end_time is None or end_time > now_time):
+            # Turn off the zone GPIO
+            if zone_state(sector):
+                zone_off(sector)
+
+            # Close the irrigation log for this schedule
+            db.execute("""
+                UPDATE irrigation_log
+                SET end_time = ?, status = 'cancelado'
+                WHERE sector = ?
+                  AND type = 'programado'
+                  AND end_time IS NULL
+                  AND scheduled_id = ?
+            """, (now_str, sector, schedule_id))
+
+            # Telegram notification
+            notify_irrigation_cancelled(sector, "Cancelado por usuario")
+
+    # Delete the schedule
+    db.execute("""
+        DELETE FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,))
+
+    db.commit()
+
+    return jsonify({"success": True})
+
+
+@routes.route("/irrigation/manual/<int:sector>", methods=["POST"])
+@login_required
+@limiter.limit("30 per minute")
+def irrigation_manual(sector):
+
+    from app.hardware_manager import zone_on, zone_off, zone_state
+    from app.notifications import notify_irrigation_completed, notify_irrigation_started
+
+    db = get_db()
+
+    is_active = zone_state(sector)
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if is_active:
+        zone_off(sector)
+
+        # Get start_time before closing the log to calculate duration
+        log_row = db.execute("""
+            SELECT start_time FROM irrigation_log
+            WHERE sector = ? AND end_time IS NULL
+            ORDER BY id DESC LIMIT 1
+        """, (sector,)).fetchone()
+
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time = ?, status = 'completado'
+            WHERE sector = ? AND end_time IS NULL
+        """, (now_str, sector))
+        db.commit()
+
+        # Calculate duration and send Telegram notification
+        if log_row:
+            start = log_row[0]
+            try:
+                start_dt = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+                duration = int((datetime.now() - start_dt).total_seconds() / 60)
+            except Exception:
+                duration = None
+            notify_irrigation_completed(sector, start, now_str, duration, "manual")
+    else:
+        zone_on(sector)
+        db.execute("""
+            INSERT INTO irrigation_log (sector, start_time, type)
+            VALUES (?, ?, 'manual')
+        """, (sector, now_str))
+        db.commit()
+
+        # 📱 Telegram: riego manual iniciado
+        notify_irrigation_started(sector, "manual")
+
+    return jsonify({
+        "success": True,
+        "active": not is_active,
+        "sector": sector
+    })
+
+
+# @routes.route("/irrigation/schedule", methods=["POST"])
+# @login_required
+# def add_schedule():
+#     data = request.json
+#     sector = data.get("sector")
+#     date = data.get("date")
+#     start_time = data.get("time")
+#
+#     if not all([sector, date, start_time]):
+#         return jsonify({"success": False, "message": "Datos incompletos"}), 400
+#
+#     db = get_db()
+#     db.execute("""
+#         INSERT INTO irrigation_schedule (sector, date, start_time, enabled)
+#         VALUES (?, ?, ?, 1)
+#     """, (sector, date, start_time))
+#     db.commit()
+#     return jsonify({"success": True})
+
+# Obtener riegos programados pendientes (max 10)
+@routes.route("/irrigation/schedule", methods=["GET"])
+@login_required
+def get_schedules():
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, date, start_time
+        FROM irrigation_schedule
+        WHERE enabled=1 AND (date || ' ' || start_time) > ?
+        ORDER BY date ASC, start_time ASC
+        LIMIT 10
+    """, (now_str,)).fetchall()
+    schedules = [dict(r) for r in rows]
+    return jsonify(schedules)
+
+# Cancelar riego programado
+@routes.route("/irrigation/schedule/<int:schedule_id>", methods=["DELETE"])
+@login_required
+def delete_schedule(schedule_id):
+    from app.hardware_manager import zone_off, zone_state
+
+    db = get_db()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_time = datetime.now().strftime("%H:%M")
+
+    # Get schedule info before deleting
+    schedule = db.execute("""
+        SELECT sector, start_time, end_time
+        FROM irrigation_schedule
+        WHERE id = ?
+    """, (schedule_id,)).fetchone()
+
+    if schedule:
+        sector = schedule[0]
+        start_time = schedule[1]
+        end_time = schedule[2]
+
+        # If the schedule is currently active, stop the zone
+        if start_time and start_time <= now_time and (end_time is None or end_time > now_time):
+            if zone_state(sector):
+                zone_off(sector)
+
+            db.execute("""
+                UPDATE irrigation_log
+                SET end_time = ?, status = 'cancelado'
+                WHERE sector = ?
+                  AND type = 'programado'
+                  AND end_time IS NULL
+            """, (now_str, sector))
+
+    db.execute("DELETE FROM irrigation_schedule WHERE id=?", (schedule_id,))
+    db.commit()
+    return jsonify({"success": True})
+
+# Get zone status for real-time updates
+@routes.route("/irrigation/zones/status")
+@login_required
+def zones_status():
+    try:
+        from app.hardware_manager import zone_state
+
+        zones = {}
+        for zone_id in range(1, 5):  # Zones 1-4
+            zones[zone_id] = {
+                "active": zone_state(zone_id),
+                "duration": 0  # Can be enhanced with timer tracking
+            }
+
+        return jsonify({
+            "success": True,
+            "zones": zones
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "zones": {}
+        })
+
+# Get irrigation history asynchronously
+@routes.route("/irrigation/history/list")
+@login_required
+def history_list():
+    try:
+        db = get_db()
+
+        # Intentar con todos los campos nuevos
+        try:
+            rows = db.execute("""
+                SELECT sector, start_time, end_time, type, duration_minutes, status, id, scheduled_id
+                FROM irrigation_log
+                ORDER BY id DESC
+                LIMIT 50
+            """).fetchall()
+
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row[6],
+                    "sector": row[0],
+                    "start_time": row[1],
+                    "end_time": row[2],
+                    "type": row[3],
+                    "duration_minutes": row[4],
+                    "status": row[5],
+                    "scheduled_id": row[7]
+                })
+        except Exception as e:
+            # Si falla, usar campos básicos (BD antigua)
+            print(f"Warning: Using basic fields for irrigation_log: {e}")
+            rows = db.execute("""
+                SELECT sector, start_time, end_time, type, id
+                FROM irrigation_log
+                ORDER BY id DESC
+                LIMIT 50
+            """).fetchall()
+
+            history = []
+            for row in rows:
+                history.append({
+                    "id": row[4],
+                    "sector": row[0],
+                    "start_time": row[1],
+                    "end_time": row[2],
+                    "type": row[3],
+                    "duration_minutes": None,
+                    "status": None,
+                    "scheduled_id": None
+                })
+
+        return jsonify(history)
+    except Exception as e:
+        print(f"Error in history_list: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# Emergency stop - turn off all zones
+@routes.route("/irrigation/emergency-stop", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def emergency_stop():
+    try:
+        from app.hardware_manager import all_off
+        from app.notifications import notify_emergency_stop
+
+        all_off()
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db = get_db()
+
+        # Close all open irrigation logs (manual AND scheduled)
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time = ?, status = 'cancelado'
+            WHERE end_time IS NULL
+        """, (now_str,))
+
+        # Disable ALL active scheduled irrigations so the scheduler doesn't re-activate them
+        db.execute("""
+            UPDATE irrigation_schedule
+            SET enabled = 0, status = 'cancelado'
+            WHERE enabled = 1
+        """)
+
+        db.commit()
+
+        # Telegram notification
+        notify_emergency_stop()
+
+        return jsonify({
+            "success": True,
+            "message": "All zones and schedules stopped"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# Activar / desactivar riego manual
+@routes.route("/irrigation/manual", methods=["POST"])
+@login_required
+def manual_irrigate():
+    data = request.json
+    sector = data.get("sector")
+    action = data.get("action")  # "start" o "stop"
+
+    if not sector or action not in ["start", "stop"]:
+        return jsonify({"success": False}), 400
+
+    db = get_db()
+    if action == "start":
+        db.execute("""
+            INSERT INTO irrigation_log (sector, start_time, type)
+            VALUES (?, CURRENT_TIMESTAMP, 'manual')
+        """, (sector,))
+    else:
+        db.execute("""
+            UPDATE irrigation_log
+            SET end_time=CURRENT_TIMESTAMP
+            WHERE sector=? AND type='manual' AND end_time IS NULL
+        """, (sector,))
+    db.commit()
+    return jsonify({"success": True})
+
+# Obtener historial de riegos (últimos 10)
+@routes.route("/irrigation/log", methods=["GET"])
+@login_required
+def get_irrigation_log():
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
+    log = [dict(r) for r in rows]
+    return jsonify(log)
+
+@routes.route("/irrigation/history")
+@login_required
+def irrigation_history():
+    db = get_db()
+    rows = db.execute("""
+        SELECT id, sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY id DESC
+        LIMIT 20
+    """).fetchall()
+    return render_template("irrigation_history.html", rows=rows)
+
+@routes.route("/logs")
+@login_required
+def irrigation_logs():
+
+    db = get_db()
+
+    rows = db.execute("""
+        SELECT sector, start_time, end_time, type
+        FROM irrigation_log
+        ORDER BY start_time DESC
+        LIMIT 50
+    """).fetchall()
+
+    logs = []
+
+    for r in rows:
+        logs.append({
+            "sector": r[0],
+            "start_time": r[1],
+            "end_time": r[2],
+            "type": r[3]
+        })
+
+    return render_template("logs.html", logs=logs)
+
+# --------------------
+# HARDWARE STATUS
+# --------------------
+@routes.route("/hardware/status")
+@login_required
+def hardware_status():
+    """Get hardware connection status and signal quality"""
+    try:
+        from app.hardware_manager import get_hardware_info, check_connection
+
+        info = get_hardware_info()
+        info['connected'] = check_connection()
+
+        return jsonify(info)
+    except ImportError:
+        # Fallback if hardware_lora doesn't exist yet
+        return jsonify({
+            'mode': 'GPIO',
+            'zones': 4,
+            'active_zones': [],
+            'connected': True
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# --------------------
+# SYSTEM
+# --------------------
+@routes.route("/system")
+@login_required
+def system():
+    """Página de información del sistema"""
+    import socket
+    import platform
+    import sys
+
+    # Get local IP
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        local_ip = "127.0.0.1"
+
+    # Get hostname
+    hostname = socket.gethostname()
+
+    # Get gateway (approximate)
+    gateway = ".".join(local_ip.split(".")[:-1]) + ".1"
+
+    # OS info
+    os_info = f"{platform.system()} {platform.release()}"
+
+    # Python version
+    python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    return render_template(
+        "system.html",
+        local_ip=local_ip,
+        hostname=hostname,
+        gateway=gateway,
+        os_info=os_info,
+        python_version=python_version
+    )
+
+@routes.route("/system/internet-check")
+@login_required
+def system_internet_check():
+    """Check internet connectivity"""
+    import urllib.request
+    import json
+
+    try:
+        # Try to get public IP
+        response = urllib.request.urlopen('https://api.ipify.org?format=json', timeout=5)
+        data = json.loads(response.read().decode('utf-8'))
+        public_ip = data.get('ip', 'Unknown')
+
+        # Try to get ISP info
+        try:
+            isp_response = urllib.request.urlopen(f'https://ipapi.co/{public_ip}/json/', timeout=5)
+            isp_data = json.loads(isp_response.read().decode('utf-8'))
+            isp = isp_data.get('org', 'Unknown')
+        except:
+            isp = 'Unknown'
+
+        return jsonify({
+            "connected": True,
+            "public_ip": public_ip,
+            "isp": isp
+        })
+    except Exception as e:
+        return jsonify({
+            "connected": False,
+            "public_ip": None,
+            "isp": None,
+            "error": str(e)
+        })
+
+@routes.route("/system/esp32-devices")
+@login_required
+def system_esp32_devices():
+    """Scan for ESP32 WROOM devices on the network"""
+    import socket
+
+    # Get local network
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        network_prefix = ".".join(local_ip.split(".")[:-1])
+    except:
+        network_prefix = "192.168.1"
+
+    devices = []
+
+    # Check for known ESP32 devices (you can expand this list)
+    known_esp32_ips = [
+        f"{network_prefix}.100",
+        f"{network_prefix}.101",
+        f"{network_prefix}.102",
+        f"{network_prefix}.103"
+    ]
+
+    for i, ip in enumerate(known_esp32_ips):
+        # Try to ping or check if device responds
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            result = sock.connect_ex((ip, 80))  # Try HTTP port
+            online = (result == 0)
+            sock.close()
+
+            if online:
+                devices.append({
+                    "name": f"ESP32-{i+1}",
+                    "ip": ip,
+                    "mac": f"AA:BB:CC:DD:EE:{i:02d}",
+                    "zones": 4,
+                    "online": True,
+                    "last_seen": "Ahora"
+                })
+        except:
+            pass
+
+    return jsonify({"devices": devices})
+
+@routes.route("/system/water-total")
+@login_required
+def system_water_total():
+    """Get total water consumption"""
+    db = get_db()
+    total = db.execute("SELECT SUM(liters) FROM water_consumption").fetchone()
+    return jsonify({"total": total[0] or 0})
+
+@routes.route("/system/logs-count")
+@login_required
+def system_logs_count():
+    """Get total logs count"""
+    db = get_db()
+    count = db.execute("SELECT COUNT(*) FROM irrigation_log").fetchone()
+    return jsonify({"count": count[0] or 0})
+
+# --------------------
+# PERIPHERALS / HEALTH CHECK
+# --------------------
+@routes.route("/peripherals")
+@login_required
+def peripherals():
+    """Página de estado de periféricos"""
+    return render_template("peripherals.html")
+
+@routes.route("/api/peripherals/status")
+@login_required
+def peripherals_status():
+    """Check status of all peripherals and return JSON"""
+    from app.config import HARDWARE_MODE, PERIPHERALS
+    peripherals_config = PERIPHERALS
+
+    results = []
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    for key, cfg in peripherals_config.items():
+        device = {
+            "id": key,
+            "name": cfg["name"],
+            "type": cfg["type"],
+            "status": "unknown",
+            "message": "",
+            "last_seen": now_str,
+            "detail": ""
+        }
+
+        try:
+            if cfg["type"] == "relay":
+                # Check relay GPIO
+                gpio_pin = cfg["gpio"]
+                try:
+                    from app.hardware_manager import zone_state, ZONE_PINS
+                    # Find zone_id for this pin
+                    zone_id = None
+                    for zid, pin in ZONE_PINS.items():
+                        if pin == gpio_pin:
+                            zone_id = zid
+                            break
+
+                    if zone_id is not None:
+                        is_active = zone_state(zone_id)
+                        if is_active:
+                            device["status"] = "active"
+                            device["message"] = "Regando"
+                            device["detail"] = f"GPIO {gpio_pin} - HIGH"
+                        else:
+                            device["status"] = "ok"
+                            device["message"] = "Listo (en reposo)"
+                            device["detail"] = f"GPIO {gpio_pin} - LOW"
+                    else:
+                        device["status"] = "idle"
+                        device["message"] = "Pin no mapeado"
+                except ImportError:
+                    # On macOS/dev, no GPIO
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible (modo simulación)"
+                    device["detail"] = f"GPIO {gpio_pin}"
+
+            elif cfg["type"] == "sensor" and key == "dht22":
+                # Try reading DHT22
+                try:
+                    db = get_db()
+                    last = db.execute("""
+                        SELECT temperature, humidity 
+                        FROM dht_readings 
+                        ORDER BY id DESC LIMIT 1
+                    """).fetchone()
+
+                    if last:
+                        device["status"] = "ok"
+                        device["message"] = f"T: {last[0]}°C | H: {last[1]}%"
+                        device["last_seen"] = now_str
+                        device["detail"] = f"GPIO {cfg['gpio']}"
+                    else:
+                        device["status"] = "idle"
+                        device["message"] = "Sin lecturas recientes"
+                        device["detail"] = f"GPIO {cfg['gpio']}"
+                except Exception as e:
+                    device["status"] = "error"
+                    device["message"] = f"Error: {str(e)[:50]}"
+
+            elif cfg["type"] == "sensor" and key == "fertilizer_counter":
+                # Fertilizer counter - check GPIO
+                try:
+                    from app.gpio import setup_pin, read_pin
+                    device["status"] = "idle"
+                    device["message"] = "En reposo"
+                    device["detail"] = f"GPIO {cfg['gpio']}"
+                except ImportError:
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible"
+
+
+            elif cfg["type"] == "actuator" and key == "pump":
+                # Peristaltic pump
+                try:
+                    from app.hardware_manager import pump_state
+                    if pump_state():
+                        device["status"] = "active"
+                        device["message"] = "Bomba activa (inyectando)"
+                    else:
+                        device["status"] = "ok"
+                        device["message"] = "Bomba en espera"
+                    device["detail"] = f"GPIO {cfg['gpio']}"
+                except ImportError:
+                    device["status"] = "idle"
+                    device["message"] = "GPIO no disponible"
+
+            elif cfg["type"] == "esp32" or cfg["type"] == "lora":
+                # ESP32 via LoRa y Hub Local
+                try:
+                    from app.lora_controller import get_lora_controller
+                    lora = get_lora_controller()
+
+                    if cfg["type"] == "lora":
+                        # El RPi LoRa Hub (UART)
+                        activity = lora.get_activity_state() if lora else "Desactivado"
+                        if lora and lora.connected:
+                            # Hacer un poll rápido de mensajes
+                            lora.poll_incoming()
+                            msgs = getattr(lora, 'received_messages_count', 0)
+                            devs = len(getattr(lora, 'seen_devices', set()))
+
+                            device["status"] = "active" if msgs > 0 else "ok"
+                            device["message"] = f"Recibiendo tramas ({msgs})" if msgs > 0 else f"{activity}"
+                            device["detail"] = f"Dispositivos: {devs} | Puerto: {lora.port}"
+                        else:
+                            device["status"] = "error"
+                            device["message"] = "Puerto cerrado"
+                            device["detail"] = f"Fallo en {lora.port if lora else 'Desconocido'}"
+
+                    else:
+                        # ESP32 Node (Tensiómetro)
+                        if HARDWARE_MODE == 'LORA':
+                            if lora and lora.ping():
+                                device["status"] = "ok"
+                                device["message"] = "Conectado vía LoRa"
+                                quality = lora.get_signal_quality()
+                                if quality:
+                                    device["detail"] = f"RSSI: {quality.get('rssi', '?')} dBm"
+                            else:
+                                device["status"] = "error"
+                                device["message"] = "Sin respuesta a Ping"
+                        else:
+                            device["status"] = "idle"
+                            device["message"] = f"Modo {HARDWARE_MODE}"
+                except Exception as e:
+                    device["status"] = "error"
+                    device["message"] = f"Error LoRa: {str(e)[:50]}"
+
+        except Exception as e:
+            device["status"] = "error"
+            device["message"] = f"Error: {str(e)[:60]}"
+
+        results.append(device)
+
+    # Also check database health
+    try:
+        db = get_db()
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        db_status = {
+            "id": "database",
+            "name": "Base de Datos SQLite",
+            "type": "system",
+            "status": "ok",
+            "message": f"{len(tables)} tablas activas",
+            "last_seen": now_str,
+            "detail": "irrigation.db"
+        }
+    except Exception as e:
+        db_status = {
+            "id": "database",
+            "name": "Base de Datos SQLite",
+            "type": "system",
+            "status": "error",
+            "message": str(e)[:60],
+            "last_seen": now_str,
+            "detail": ""
+        }
+    results.append(db_status)
+
+    return jsonify(results)
+
+@routes.route("/api/pump/on", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def pump_on_route():
+    """Turn on peristaltic pump"""
+    try:
+        data = request.get_json() or {}
+        duration = data.get("duration", 300)  # default 5 min
+        from app.hardware_manager import pump_on
+        pump_on(duration)
+        return jsonify({"success": True, "message": f"Bomba encendida ({duration}s)"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@routes.route("/api/pump/off", methods=["POST"])
+@login_required
+@limiter.limit("10 per minute")
+def pump_off_route():
+    """Turn off peristaltic pump"""
+    try:
+        from app.hardware_manager import pump_off
+        pump_off()
+        return jsonify({"success": True, "message": "Bomba apagada"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
