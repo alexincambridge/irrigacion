@@ -31,6 +31,12 @@
                 </div>
             </div>
         </div>
+        <!-- Controles extras -->
+        <div class="col-md-6 d-flex justify-content-end align-items-center">
+            <button class="btn btn-outline-danger shadow-sm me-2" onclick="clearData()">
+                <i class="fas fa-trash-alt me-1"></i> Limpiar Memoria
+            </button>
+        </div>
     </div>
 
     <div class="row" id="nodes-container">
@@ -95,11 +101,13 @@
                         if(key.toLowerCase().includes('temp') || key.toLowerCase() === 't') propIcon = 'fa-thermometer-half text-danger';
                         if(key.toLowerCase().includes('hum') || key.toLowerCase() === 'h') propIcon = 'fa-tint text-info';
                         if(key.toLowerCase().includes('bat') || key.toLowerCase() === 'v') propIcon = 'fa-battery-full text-success';
+                        if(key.toLowerCase().includes('contador')) propIcon = 'fa-hashtag text-secondary';
+                        if(key.toLowerCase().includes('rel')) propIcon = 'fa-bolt text-warning';
 
                         metricsHtml += `
                             <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                                <span class="text-muted fw-bold small"><i class="fas ${propIcon} me-2" style="width:16px;"></i>${key.toUpperCase()}</span>
-                                <span class="fw-bold">${value}</span>
+                                <span class="text-muted fw-bold small"><i class="fas ${propIcon} me-2" style="width:16px;"></i>${key}</span>
+                                <span class="fw-bold text-dark">${value}</span>
                             </div>
                         `;
                     }
@@ -119,7 +127,7 @@
 
                 if (displayName.toLowerCase().includes('mac') || displayName.toLowerCase().includes('laptop')) {
                     nodeIcon = 'fa-laptop';
-                } else if (displayName.toLowerCase().includes('pico')) {
+                } else if (displayName.toLowerCase().includes('pico') || displayName.toLowerCase().includes('nodo')) {
                     nodeIcon = 'fa-network-wired';
                 }
 
@@ -152,6 +160,24 @@
 
         } catch (e) {
             console.error("Error UI LoRa:", e);
+        }
+    }
+
+    async function clearData() {
+        if(!confirm("¿Estás seguro de que quieres borrar todos los nodos de la memoria?")) return;
+
+        try {
+            const resp = await fetch('/api/lora-nodes/clear', { method: 'POST' });
+            if (resp.ok) {
+                document.getElementById('nodes-container').innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2">Buscando tramas LoRa...</p>
+                </div>`;
+                fetchNodes();
+            }
+        } catch (e) {
+            console.error(e);
         }
     }
 

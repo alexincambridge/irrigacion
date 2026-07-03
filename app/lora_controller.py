@@ -356,72 +356,64 @@ class LoRaController:
             if self.serial.in_waiting > 0:
                 # Marcar estado y leer buffer
                 self.activity_state = "Recibiendo mensajes..."
-                buffer = self.serial.read(self.serial.in_waiting)
-                text = buffer.decode('utf-8', errors='ignore')
-                self.rx_buffer += text
+                raw_bytes = self.serial.read(self.serial.in_waiting)
 
-                # Solo procesar cuando recibamos un salto de línea (mensaje completo)
-                if '\n' in self.rx_buffer:
-                    lines = self.rx_buffer.split('\n')
-                    # El último elemento es la trama incompleta o un string vacío si terminó en \n
-                    self.rx_buffer = lines.pop()
+                # Migrar buffer a bytearray si era string
+                if isinstance(self.rx_buffer, str):
+                    self.rx_buffer = bytearray()
+                self.rx_buffer.extend(raw_bytes)
 
-                    # Inicializar contadores y memoria de nodos si no existen
-                    if not hasattr(self, 'received_messages_count'):
-                        self.received_messages_count = 0
-                    if not hasattr(self, 'seen_devices'):
-                        self.seen_devices = set()
-                    if not hasattr(self, 'nodes_data'):
-                        self.nodes_data = {}
+                # Inicializar contadores y memoria de nodos si no existen
+                if not hasattr(self, 'received_messages_count'):
+                    self.received_messages_count = 0
+                if not hasattr(self, 'seen_devices'):
+                    self.seen_devices = set()
+                if not hasattr(self, 'nodes_data'):
+                    self.nodes_data = {}
 
-                    import json
-                    from datetime import datetime
+                import struct
+                from datetime import datetime
 
-                    for line in lines:
-                        line = line.strip()
-                        if line:
-                            self.received_messages_count += 1
-                            logger.info(f"📨 LoRa INCOMING: {line}")
+                # Leer tramas binarias de 9 bytes
+                while len(self.rx_buffer) >= 9:
+                    packet = self.rx_buffer[:9]
+                    self.rx_buffer = self.rx_buffer[9:]
 
-                            node_id = "Desconocido"
-                            parsed_data = {"raw": line}
+                    try:
+                        # byte 0: device_id (uint8)
+                        # byte 1: contador (uint8)
+                        # byte2-3: S1 (int16, centi-grados)
+                        # byte4-5: S2 (int16, centi-grados)
+                        # byte6-7: S3 (int16, centi-grados)
+                        # byte8: rele (uint8)
+                        device_id, counter, s1_raw, s2_raw, s3_raw, rele = struct.unpack('<BBhhhB', packet)
 
-                            try:
-                                # Buscar llaves en caso de que haya ruido antes del JSON
-                                start_idx = line.find('{')
-                                end_idx = line.rfind('}')
+                        s1 = s1_raw / 100.0
+                        s2 = s2_raw / 100.0
+                        s3 = s3_raw / 100.0
 
-                                # 1. Formato JSON extraído de la trama
-                                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                                    json_str = line[start_idx:end_idx+1]
-                                    data = json.loads(json_str)
-                                    node_id = str(data.get("id", data.get("node", data.get("from", "Node_JSON"))))
-                                    parsed_data = data
-                                # 2. Formato Texto Clave-Valor: Nodo1: T=24.5, H=60
-                                elif ":" in line:
-                                    parts = line.split(":", 1)
-                                    node_id = parts[0].strip()
-                                    payload = parts[1].strip()
-                                    parsed_data = {"payload": payload}
-                                    for item in payload.split(","):
-                                        if "=" in item:
-                                            k, v = item.split("=", 1)
-                                            parsed_data[k.strip()] = v.strip()
-                                # 3. Simple texto con identificadores
-                                else:
-                                    if "ESP32" in line or "Mac" in line or "pico" in line.lower():
-                                        node_id = line.split()[0] if " " in line else line
-                            except Exception:
-                                pass
+                        node_id = f"Nodo-{device_id}"
+                        self.received_messages_count += 1
+                        logger.info(f"📨 LoRa INCOMING: {node_id} | C:{counter} | S1:{s1} S2:{s2} S3:{s3} | Rel:{rele}")
 
-                            self.seen_devices.add(node_id)
-                            self.nodes_data[node_id] = {
-                                "last_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "data": parsed_data,
-                                "raw": line
-                            }
+                        parsed_data = {
+                            "v S1 Temp": f"{s1} °C",
+                            "v S2 Temp": f"{s2} °C",
+                            "v S3 Temp": f"{s3} °C",
+                            "Contador": counter,
+                            "Relé": "ON" if rele else "OFF"
+                        }
 
-                    self.last_response = text.strip() or self.last_response
+                        self.seen_devices.add(node_id)
+                        self.nodes_data[node_id] = {
+                            "last_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "data": parsed_data,
+                            "raw": packet.hex('-')
+                        }
+                    except Exception as exc:
+                        logger.error(f"Error parseando trama binaria: {exc}")
+
+                self.last_response = f"Bytes rx: {raw_bytes.hex()}"
             else:
                 self.activity_state = "Modo escucha"
         except Exception as e:

@@ -1038,6 +1038,25 @@ def api_lora_nodes():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@routes.route("/api/lora-nodes/clear", methods=["POST"])
+@login_required
+def api_lora_nodes_clear():
+    """Clear memory of lora nodes data"""
+    try:
+        from app.lora_controller import get_lora_controller
+        lora = get_lora_controller()
+        if lora:
+            lora.nodes_data = {}
+            lora.seen_devices = set()
+            lora.received_messages_count = 0
+            if isinstance(lora.rx_buffer, bytearray):
+                lora.rx_buffer = bytearray()
+            else:
+                lora.rx_buffer = ""
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------
 # PERIPHERALS / HEALTH CHECK
 # --------------------
