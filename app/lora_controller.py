@@ -388,9 +388,9 @@ class LoRaController:
                         # byte8: rele (uint8)
                         device_id, counter, s1_raw, s2_raw, s3_raw, rele = struct.unpack('<BBhhhB', packet)
 
-                        s1 = s1_raw / 100.0
-                        s2 = s2_raw / 100.0
-                        s3 = s3_raw / 100.0
+                        s1 = round(s1_raw / 1000.0, 1)
+                        s2 = round(s2_raw / 1000.0, 1)
+                        s3 = round(s3_raw / 1000.0, 1)
 
                         node_id = f"Nodo-{device_id}"
                         self.received_messages_count += 1
