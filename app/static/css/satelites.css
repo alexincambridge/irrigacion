@@ -1,0 +1,398 @@
+/* =========================================================
+   SATÉLITES - Developer Dashboard
+   Dark carbon fiber + luxury car gauge aesthetic
+   ========================================================= */
+
+:root {
+  --sat-bg: #0b0c0e;
+  --sat-panel: #141619;
+  --sat-panel-light: #1c1f24;
+  --sat-cyan: #00e5ff;
+  --sat-amber: #ffb300;
+  --sat-white: #f5f7fa;
+  --sat-green: #00e676;
+  --sat-red: #ff1744;
+  --sat-text: #b0b8c4;
+  --sat-muted: #5f6b7a;
+  --sat-border: rgba(255, 255, 255, 0.08);
+  --sat-glow-cyan: 0 0 25px rgba(0, 229, 255, 0.25);
+  --sat-glow-amber: 0 0 25px rgba(255, 179, 0, 0.25);
+  --sat-glow-white: 0 0 25px rgba(245, 247, 250, 0.15);
+}
+
+.sat-page {
+  min-height: 100vh;
+  background-color: var(--sat-bg);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,0.015) 0px,
+      rgba(255,255,255,0.015) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  color: var(--sat-text);
+  font-family: 'SF Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
+  padding: 2rem;
+}
+
+/* Subtle metallic reflection overlay */
+.sat-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 80% 100%, rgba(255,255,255,0.03) 0%, transparent 40%);
+  z-index: 0;
+}
+
+.sat-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.sat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--sat-border);
+}
+
+.sat-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--sat-white);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.sat-title span {
+  color: var(--sat-cyan);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.5);
+}
+
+.sat-subtitle {
+  font-size: 0.75rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 0.35rem;
+}
+
+.sat-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.sat-btn {
+  background: var(--sat-panel-light);
+  border: 1px solid var(--sat-border);
+  color: var(--sat-text);
+  padding: 0.6rem 1.1rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.sat-btn:hover {
+  border-color: var(--sat-cyan);
+  color: var(--sat-cyan);
+  box-shadow: var(--sat-glow-cyan);
+}
+
+.sat-btn.danger:hover {
+  border-color: var(--sat-red);
+  color: var(--sat-red);
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.25);
+}
+
+/* Status bar */
+.sat-statusbar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 2.5rem;
+}
+
+.sat-stat {
+  background: var(--sat-panel);
+  border: 1px solid var(--sat-border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.sat-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--sat-cyan), transparent);
+  opacity: 0.4;
+}
+
+.sat-stat-label {
+  font-size: 0.65rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.sat-stat-value {
+  font-size: 1.4rem;
+  color: var(--sat-white);
+  font-weight: 600;
+}
+
+.sat-stat-value.online {
+  color: var(--sat-green);
+  text-shadow: 0 0 10px rgba(0, 230, 118, 0.35);
+}
+
+.sat-stat-value.listening {
+  color: var(--sat-cyan);
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.35);
+}
+
+/* Gauge deck */
+.sat-gauge-deck {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.sat-gauge {
+  background: var(--sat-panel);
+  border: 1px solid var(--sat-border);
+  border-radius: 12px;
+  padding: 1.5rem 1rem 1rem;
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 10px 40px rgba(0,0,0,0.4);
+}
+
+.sat-gauge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 40%, transparent 60%, rgba(255,255,255,0.08));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.sat-gauge-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.sat-gauge-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sat-white);
+  font-weight: 600;
+}
+
+.sat-gauge-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.sat-gauge-value.cyan { color: var(--sat-cyan); text-shadow: 0 0 10px rgba(0,229,255,0.4); }
+.sat-gauge-value.amber { color: var(--sat-amber); text-shadow: 0 0 10px rgba(255,179,0,0.4); }
+.sat-gauge-value.white { color: var(--sat-white); text-shadow: 0 0 10px rgba(245,247,250,0.3); }
+
+.sat-gauge-chart {
+  height: 260px;
+}
+
+.sat-gauge-footer {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: -0.5rem;
+}
+
+/* Relay + info panel */
+.sat-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.sat-info-card {
+  background: var(--sat-panel);
+  border: 1px solid var(--sat-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+}
+
+.sat-relay-indicator {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  border: 2px solid rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+
+.sat-relay-indicator.on {
+  background: rgba(255, 23, 68, 0.12);
+  border-color: var(--sat-red);
+  color: var(--sat-red);
+  box-shadow: 0 0 30px rgba(255, 23, 68, 0.35), inset 0 0 20px rgba(255, 23, 68, 0.15);
+}
+
+.sat-relay-indicator.off {
+  background: rgba(0, 230, 118, 0.08);
+  border-color: var(--sat-green);
+  color: var(--sat-green);
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.15), inset 0 0 15px rgba(0, 230, 118, 0.08);
+}
+
+.sat-relay-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--sat-white);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.sat-relay-sub {
+  font-size: 0.7rem;
+  color: var(--sat-muted);
+  margin-top: 0.25rem;
+  letter-spacing: 0.08em;
+}
+
+.sat-timestamp {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 1.15rem;
+  color: var(--sat-cyan);
+  text-shadow: 0 0 10px rgba(0,229,255,0.25);
+}
+
+.sat-timestamp-label {
+  font-size: 0.7rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+/* Developer raw data */
+.sat-dev-panel {
+  background: var(--sat-panel);
+  border: 1px solid var(--sat-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.sat-dev-header {
+  font-size: 0.75rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+.sat-dev-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.sat-dev-item {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--sat-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.sat-dev-key {
+  font-size: 0.6rem;
+  color: var(--sat-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.sat-dev-value {
+  font-size: 0.95rem;
+  color: var(--sat-white);
+  font-weight: 600;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+/* Empty state */
+.sat-empty {
+  text-align: center;
+  padding: 5rem 2rem;
+  border: 1px dashed var(--sat-border);
+  border-radius: 12px;
+  color: var(--sat-muted);
+}
+
+.sat-empty i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .sat-gauge-deck { grid-template-columns: 1fr; }
+  .sat-statusbar { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .sat-page { padding: 1rem; }
+  .sat-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+  .sat-statusbar { grid-template-columns: 1fr; }
+  .sat-info-grid { grid-template-columns: 1fr; }
+}
+

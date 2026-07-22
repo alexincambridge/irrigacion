@@ -14,7 +14,7 @@ import time
 # Add project root to path so we can import app modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.lora_controller import LoRaController
+from app.lora_con mas troller import LoRaController
 
 def print_header(text):
     print("\n" + "=" * 60)
