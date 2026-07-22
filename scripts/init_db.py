@@ -133,6 +133,23 @@ def init_database():
        )
     """)
 
+    # -------------------------
+    # LORA READINGS (satélites)
+    # -------------------------
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS lora_readings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id INTEGER NOT NULL,
+            device_name TEXT DEFAULT '',
+            counter INTEGER DEFAULT 0,
+            s1_temp REAL,
+            s2_temp REAL,
+            s3_temp REAL,
+            rele INTEGER DEFAULT 0,
+            raw_packet TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     conn.commit()
     conn.close()

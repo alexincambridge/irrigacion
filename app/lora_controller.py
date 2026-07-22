@@ -14,6 +14,7 @@ Pinout:
 
 import time
 import logging
+import sqlite3
 
 try:
     import serial
@@ -388,28 +389,51 @@ class LoRaController:
                         # byte8: rele (uint8)
                         device_id, counter, s1_raw, s2_raw, s3_raw, rele = struct.unpack('<BBhhhB', packet)
 
-                        s1 = round(s1_raw / 1000.0, 1)
-                        s2 = round(s2_raw / 1000.0, 1)
-                        s3 = round(s3_raw / 1000.0, 1)
+                        # centi-grados -> grados (ej. 2940 -> 29.4 °C)
+                        s1 = round(s1_raw / 100.0, 1)
+                        s2 = round(s2_raw / 100.0, 1)
+                        s3 = round(s3_raw / 100.0, 1)
+                        rele_state = 1 if rele else 0
+
+                        # Nombre amigable del dispositivo
+                        device_name_map = {1: "aguacate"}
+                        device_name = device_name_map.get(device_id, f"nodo-{device_id}")
 
                         node_id = f"Nodo-{device_id}"
                         self.received_messages_count += 1
-                        logger.info(f"📨 LoRa INCOMING: {node_id} | C:{counter} | S1:{s1} S2:{s2} S3:{s3} | Rel:{rele}")
+                        logger.info(f"📨 LoRa INCOMING: {node_id} ({device_name}) | C:{counter} | S1:{s1} S2:{s2} S3:{s3} | Rel:{rele_state}")
 
                         parsed_data = {
                             "v S1 Temp": f"{s1} °C",
                             "v S2 Temp": f"{s2} °C",
                             "v S3 Temp": f"{s3} °C",
                             "Contador": counter,
-                            "Relé": "ON" if rele else "OFF"
+                            "Relé": "ON" if rele_state else "OFF",
+                            "device_name": device_name
                         }
 
                         self.seen_devices.add(node_id)
+                        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         self.nodes_data[node_id] = {
-                            "last_seen": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "last_seen": now_str,
                             "data": parsed_data,
                             "raw": packet.hex('-')
                         }
+
+                        # Persistir en base de datos (lazy import para no romper tests fuera de Flask)
+                        try:
+                            from app.db import DB_PATH
+                            db_conn = sqlite3.connect(DB_PATH)
+                            db_cur = db_conn.cursor()
+                            db_cur.execute("""
+                                INSERT INTO lora_readings
+                                (device_id, device_name, counter, s1_temp, s2_temp, s3_temp, rele, raw_packet, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (device_id, device_name, counter, s1, s2, s3, rele_state, packet.hex('-'), now_str))
+                            db_conn.commit()
+                            db_conn.close()
+                        except Exception as db_exc:
+                            logger.warning(f"⚠️ No se pudo guardar lectura LoRa en BD: {db_exc}")
                     except Exception as exc:
                         logger.error(f"Error parseando trama binaria: {exc}")
 

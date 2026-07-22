@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Satélites{% endblock %}
+{% block page_title %}Satélites LoRa{% endblock %}
+{% block breadcrumb %}Dispositivos remotos{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-satellite text-primary me-2"></i>🛰️ Satélites LoRa</h2>
+            <p class="text-muted mb-0">Monitorización de dispositivos satélite conectados por radio LoRa.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="fetchSatelites()">
+                <i class="fas fa-sync-alt me-1"></i> Actualizar
+            </button>
+            <button class="btn btn-outline-danger" onclick="clearSatelites()">
+                <i class="fas fa-trash-alt me-1"></i> Borrar datos
+            </button>
+        </div>
+    </div>
+
+    <!-- Estado general -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted text-uppercase mb-1">Dispositivos activos</h6>
+                    <h2 class="display-5 text-primary mb-0" id="activeDevices">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <h6 class="text-muted text-uppercase mb-1">Mensajes recibidos</h6>
+                    <h2 class="display-5 text-info mb-0" id="totalMessages">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase mb-1">Estado del enlace LoRa</h6>
+                        <h4 class="mb-0" id="linkStatus">
+                            <span class="badge bg-secondary">Escuchando...</span>
+                        </h4>
+                    </div>
+                    <i class="fas fa-broadcast-tower fa-3x text-muted opacity-25"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dispositivos -->
+    <div id="satelites-container">
+        <div class="text-center py-5" id="satelites-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Buscando satélites LoRa...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let gaugeCharts = {};
+
+    function getTempColor(value) {
+        if (value === null || value === undefined) return '#6c757d';
+        if (value < 10) return '#00BFFF';      // frío
+        if (value < 25) return '#28a745';      // ok
+        if (value < 35) return '#ffc107';      // cálido
+        return '#dc3545';                      // caliente
+    }
+
+    function createGauge(elementId, value, label, min, max, unit) {
+        const color = getTempColor(value);
+        const options = {
+            series: [value !== null && value !== undefined ? value : 0],
+            chart: {
+                type: 'radialBar',
+                height: 280,
+                animations: { enabled: true }
+            },
+            plotOptions: {
+                radialBar: {
+                    startAngle: -135,
+                    endAngle: 135,
+                    hollow: { size: '60%' },
+                    dataLabels: {
+                        show: true,
+                        name: { fontSize: '16px', color: '#6c757d', offsetY: 20 },
+                        value: {
+                            fontSize: '32px',
+                            fontWeight: 600,
+                            color: '#333',
+                            formatter: function (val) {
+                                return value !== null && value !== undefined ? val.toFixed(1) + unit : '--';
+                            }
+                        }
+                    }
+                }
+            },
+            fill: { type: 'solid', colors: [color] },
+            stroke: { lineCap: 'round' },
+            labels: [label],
+            tooltip: { enabled: false }
+        };
+
+        if (gaugeCharts[elementId]) {
+            gaugeCharts[elementId].updateOptions({
+                fill: { colors: [color] },
+                plotOptions: {
+                    radialBar: {
+                        dataLabels: {
+                            value: {
+                                formatter: function (val) {
+                                    return value !== null && value !== undefined ? val.toFixed(1) + unit : '--';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            gaugeCharts[elementId].updateSeries([value !== null && value !== undefined ? value : 0]);
+        } else {
+            const chart = new ApexCharts(document.querySelector(elementId), options);
+            chart.render();
+            gaugeCharts[elementId] = chart;
+        }
+    }
+
+    function createRelayIndicator(elementId, isOn) {
+        const el = document.querySelector(elementId);
+        if (!el) return;
+        el.innerHTML = `
+            <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                <div class="rounded-circle d-flex align-items-center justify-content-center mb-3"
+                     style="width: 140px; height: 140px; background: ${isOn ? '#dc3545' : '#28a745'}; box-shadow: 0 0 30px ${isOn ? 'rgba(220,53,69,0.4)' : 'rgba(40,167,69,0.4)'};">
+                    <i class="fas fa-power-off fa-4x text-white"></i>
+                </div>
+                <h4 class="fw-bold mb-0" style="color: ${isOn ? '#dc3545' : '#28a745'}">
+                    ${isOn ? 'RELÉ ON' : 'RELÉ OFF'}
+                </h4>
+                <small class="text-muted">Estado actual</small>
+            </div>
+        `;
+    }
+
+    function renderDevice(device) {
+        const safeName = device.device_name.replace(/[^a-z0-9]/gi, '-');
+        const container = document.getElementById('satelites-container');
+        let card = document.getElementById(`satelite-card-${device.device_id}`);
+
+        if (!card) {
+            card = document.createElement('div');
+            card.id = `satelite-card-${device.device_id}`;
+            card.className = 'card border-0 shadow-sm mb-4';
+            card.innerHTML = `
+                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-satellite-dish fa-lg text-primary me-3"></i>
+                        <div>
+                            <h5 class="mb-0 text-capitalize">${device.device_name}</h5>
+                            <small class="text-muted">ID dispositivo: ${device.device_id}</small>
+                        </div>
+                    </div>
+                    <span class="badge bg-success rounded-pill status-badge">Activo</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div id="gauge-s1-${device.device_id}"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <div id="gauge-s2-${device.device_id}"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <div id="gauge-s3-${device.device_id}"></div>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-md-4 offset-md-4">
+                            <div id="relay-${device.device_id}" style="height: 220px;"></div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12 text-center text-muted small">
+                            <i class="fas fa-hashtag me-1"></i>Contador: <strong id="counter-${device.device_id}">${device.counter}</strong>
+                            <span class="mx-2">|</span>
+                            <i class="far fa-clock me-1"></i>Último mensaje: <strong id="lastseen-${device.device_id}">${device.last_seen || 'Desconocido'}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+
+        // Actualizar gauges
+        createGauge(`#gauge-s1-${device.device_id}`, device.s1_temp, 'S1 Temperatura', -10, 60, '°C');
+        createGauge(`#gauge-s2-${device.device_id}`, device.s2_temp, 'S2 Temperatura', -10, 60, '°C');
+        createGauge(`#gauge-s3-${device.device_id}`, device.s3_temp, 'S3 Temperatura', -10, 60, '°C');
+        createRelayIndicator(`#relay-${device.device_id}`, device.rele);
+
+        // Actualizar textos
+        document.getElementById(`counter-${device.device_id}`).innerText = device.counter;
+        document.getElementById(`lastseen-${device.device_id}`).innerText = device.last_seen || 'Desconocido';
+
+        // Actualizar badge de estado
+        const badge = card.querySelector('.status-badge');
+        if (badge) {
+            badge.className = 'badge bg-success rounded-pill status-badge';
+            badge.innerText = 'Activo';
+        }
+    }
+
+    async function fetchSatelites() {
+        try {
+            const resp = await fetch('/api/satelites');
+            const data = await resp.json();
+
+            const loading = document.getElementById('satelites-loading');
+            if (loading) loading.style.display = 'none';
+
+            if (!data.success) {
+                console.error("Error fetching satelites:", data.error);
+                document.getElementById('satelites-container').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Error cargando satélites: ${data.error}
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('activeDevices').innerText = data.devices.length;
+
+            if (data.devices.length === 0) {
+                document.getElementById('satelites-container').innerHTML = `
+                    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                        <div>
+                            <h5 class="mb-1">No hay satélites registrados</h5>
+                            <p class="mb-0">Aún no se han recibido datos LoRa. El primer dispositivo se llamará <strong>aguacate</strong>.</p>
+                        </div>
+                    </div>`;
+                document.getElementById('linkStatus').innerHTML = '<span class="badge bg-secondary">Escuchando...</span>';
+                return;
+            }
+
+            document.getElementById('linkStatus').innerHTML = '<span class="badge bg-success">Recibiendo datos</span>';
+
+            data.devices.forEach(device => renderDevice(device));
+
+            // Calcular total de mensajes aproximado (suma de contadores)
+            const totalMsgs = data.devices.reduce((sum, d) => sum + (d.counter || 0), 0);
+            document.getElementById('totalMessages').innerText = totalMsgs;
+
+        } catch (e) {
+            console.error("Error UI Satélites:", e);
+            document.getElementById('linkStatus').innerHTML = '<span class="badge bg-danger">Error de conexión</span>';
+        }
+    }
+
+    async function clearSatelites() {
+        if (!confirm("¿Borrar todos los datos guardados de satélites? Esto no afecta a la memoria en vivo del módulo LoRa.")) return;
+
+        try {
+            const resp = await fetch('/api/lora-nodes/clear', { method: 'POST' });
+            if (resp.ok) {
+                // Limpiar también la tabla de la base de datos
+                await fetch('/api/satelites/clear', { method: 'POST' });
+                document.getElementById('satelites-container').innerHTML = `
+                    <div class="text-center py-5" id="satelites-loading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2">Buscando satélites LoRa...</p>
+                    </div>`;
+                gaugeCharts = {};
+                fetchSatelites();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchSatelites();
+        setInterval(fetchSatelites, 3000);
+    });
+</script>
+{% endblock %}
+

@@ -76,6 +76,25 @@ def migrate_database():
             print("  ➕ Agregando columna 'created_at'...")
             cur.execute("ALTER TABLE irrigation_log ADD COLUMN created_at TIMESTAMP")
 
+        # Crear tabla lora_readings si no existe
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='lora_readings'")
+        if not cur.fetchone():
+            print("  ➕ Creando tabla 'lora_readings' para satélites LoRa...")
+            cur.execute("""
+                CREATE TABLE lora_readings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id INTEGER NOT NULL,
+                    device_name TEXT DEFAULT '',
+                    counter INTEGER DEFAULT 0,
+                    s1_temp REAL,
+                    s2_temp REAL,
+                    s3_temp REAL,
+                    rele INTEGER DEFAULT 0,
+                    raw_packet TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
         conn.commit()
         print("✅ Migración completada exitosamente!")
         return True

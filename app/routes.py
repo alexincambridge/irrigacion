@@ -1057,22 +1057,108 @@ def api_lora_nodes_clear():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
+# --------------------
+# SATÉLITES (dispositivos LoRa)
+# --------------------
+@routes.route("/satelites")
+@login_required
+def satelites():
+    """Página de visualización de dispositivos satélite LoRa"""
+    return render_template("satelites.html")
+
+
+@routes.route("/api/satelites")
+@login_required
+def api_satelites():
+    """Devuelve el último dato recibido de cada dispositivo satélite LoRa"""
+    try:
+        db = get_db()
+
+        rows = db.execute("""
+            SELECT device_id, device_name, counter, s1_temp, s2_temp, s3_temp, rele, created_at
+            FROM lora_readings
+            WHERE id IN (
+                SELECT MAX(id) FROM lora_readings GROUP BY device_id
+            )
+            ORDER BY device_id ASC
+        """).fetchall()
+
+        devices = []
+        for r in rows:
+            devices.append({
+                "device_id": r[0],
+                "device_name": r[1] or f"nodo-{r[0]}",
+                "counter": r[2],
+                "s1_temp": r[3],
+                "s2_temp": r[4],
+                "s3_temp": r[5],
+                "rele": bool(r[6]),
+                "last_seen": r[7]
+            })
+
+        return jsonify({"success": True, "devices": devices})
+    except Exception as e:
+        print(f"Error en api_satelites: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@routes.route("/api/satelites/history/<int:device_id>")
+@login_required
+def api_satelites_history(device_id):
+    """Histórico de lecturas de un dispositivo satélite (últimas 100)"""
+    try:
+        db = get_db()
+        rows = db.execute("""
+            SELECT s1_temp, s2_temp, s3_temp, rele, created_at
+            FROM lora_readings
+            WHERE device_id = ?
+            ORDER BY id DESC
+            LIMIT 100
+        """, (device_id,)).fetchall()
+
+        history = []
+        for r in reversed(rows):
+            history.append({
+                "s1_temp": r[0],
+                "s2_temp": r[1],
+                "s3_temp": r[2],
+                "rele": bool(r[3]),
+                "created_at": r[4]
+            })
+
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@routes.route("/api/satelites/clear", methods=["POST"])
+@login_required
+def api_satelites_clear():
+    """Borra todos los registros persistidos de lora_readings"""
+    try:
+        db = get_db()
+        db.execute("DELETE FROM lora_readings")
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 # --------------------
 # PERIPHERALS / HEALTH CHECK
 # --------------------
 @routes.route("/peripherals")
 @login_required
 def peripherals():
-    """Página de estado de periféricos"""
     return render_template("peripherals.html")
+
 
 @routes.route("/api/peripherals/status")
 @login_required
 def peripherals_status():
-    """Check status of all peripherals and return JSON"""
     from app.config import HARDWARE_MODE, PERIPHERALS
     peripherals_config = PERIPHERALS
-
     results = []
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -1089,17 +1175,14 @@ def peripherals_status():
 
         try:
             if cfg["type"] == "relay":
-                # Check relay GPIO
                 gpio_pin = cfg["gpio"]
                 try:
                     from app.hardware_manager import zone_state, ZONE_PINS
-                    # Find zone_id for this pin
                     zone_id = None
                     for zid, pin in ZONE_PINS.items():
                         if pin == gpio_pin:
                             zone_id = zid
                             break
-
                     if zone_id is not None:
                         is_active = zone_state(zone_id)
                         if is_active:
@@ -1114,24 +1197,17 @@ def peripherals_status():
                         device["status"] = "idle"
                         device["message"] = "Pin no mapeado"
                 except ImportError:
-                    # On macOS/dev, no GPIO
                     device["status"] = "idle"
-                    device["message"] = "GPIO no disponible (modo simulación)"
+                    device["message"] = "GPIO no disponible (modo simulacion)"
                     device["detail"] = f"GPIO {gpio_pin}"
 
             elif cfg["type"] == "sensor" and key == "dht22":
-                # Try reading DHT22
                 try:
                     db = get_db()
-                    last = db.execute("""
-                        SELECT temperature, humidity 
-                        FROM dht_readings 
-                        ORDER BY id DESC LIMIT 1
-                    """).fetchone()
-
+                    last = db.execute("SELECT temperature, humidity FROM dht_readings ORDER BY id DESC LIMIT 1").fetchone()
                     if last:
                         device["status"] = "ok"
-                        device["message"] = f"T: {last[0]}°C | H: {last[1]}%"
+                        device["message"] = f"T: {last[0]}C | H: {last[1]}%"
                         device["last_seen"] = now_str
                         device["detail"] = f"GPIO {cfg['gpio']}"
                     else:
@@ -1143,19 +1219,15 @@ def peripherals_status():
                     device["message"] = f"Error: {str(e)[:50]}"
 
             elif cfg["type"] == "sensor" and key == "fertilizer_counter":
-                # Fertilizer counter - check GPIO
                 try:
-                    from app.gpio import setup_pin, read_pin
                     device["status"] = "idle"
                     device["message"] = "En reposo"
                     device["detail"] = f"GPIO {cfg['gpio']}"
-                except ImportError:
-                    device["status"] = "idle"
-                    device["message"] = "GPIO no disponible"
-
+                except Exception as e:
+                    device["status"] = "error"
+                    device["message"] = f"Error: {str(e)[:50]}"
 
             elif cfg["type"] == "actuator" and key == "pump":
-                # Peristaltic pump
                 try:
                     from app.hardware_manager import pump_state
                     if pump_state():
@@ -1170,20 +1242,15 @@ def peripherals_status():
                     device["message"] = "GPIO no disponible"
 
             elif cfg["type"] == "esp32" or cfg["type"] == "lora":
-                # ESP32 via LoRa y Hub Local
                 try:
                     from app.lora_controller import get_lora_controller
                     lora = get_lora_controller()
-
                     if cfg["type"] == "lora":
-                        # El RPi LoRa Hub (UART)
                         activity = lora.get_activity_state() if lora else "Desactivado"
                         if lora and lora.connected:
-                            # Hacer un poll rápido de mensajes
                             lora.poll_incoming()
                             msgs = getattr(lora, 'received_messages_count', 0)
                             devs = len(getattr(lora, 'seen_devices', set()))
-
                             device["status"] = "active" if msgs > 0 else "ok"
                             device["message"] = f"Recibiendo tramas ({msgs})" if msgs > 0 else f"{activity}"
                             device["detail"] = f"Dispositivos: {devs} | Puerto: {lora.port}"
@@ -1191,13 +1258,11 @@ def peripherals_status():
                             device["status"] = "error"
                             device["message"] = "Puerto cerrado"
                             device["detail"] = f"Fallo en {lora.port if lora else 'Desconocido'}"
-
                     else:
-                        # ESP32 Node (Tensiómetro)
                         if HARDWARE_MODE == 'LORA':
                             if lora and lora.ping():
                                 device["status"] = "ok"
-                                device["message"] = "Conectado vía LoRa"
+                                device["message"] = "Conectado via LoRa"
                                 quality = lora.get_signal_quality()
                                 if quality:
                                     device["detail"] = f"RSSI: {quality.get('rssi', '?')} dBm"
@@ -1217,7 +1282,6 @@ def peripherals_status():
 
         results.append(device)
 
-    # Also check database health
     try:
         db = get_db()
         tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -1244,30 +1308,29 @@ def peripherals_status():
 
     return jsonify(results)
 
+
 @routes.route("/api/pump/on", methods=["POST"])
 @login_required
 @limiter.limit("10 per minute")
 def pump_on_route():
-    """Turn on peristaltic pump"""
     try:
         data = request.get_json() or {}
-        duration = data.get("duration", 300)  # default 5 min
+        duration = data.get("duration", 300)
         from app.hardware_manager import pump_on
         pump_on(duration)
         return jsonify({"success": True, "message": f"Bomba encendida ({duration}s)"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+
 @routes.route("/api/pump/off", methods=["POST"])
 @login_required
 @limiter.limit("10 per minute")
 def pump_off_route():
-    """Turn off peristaltic pump"""
     try:
         from app.hardware_manager import pump_off
         pump_off()
         return jsonify({"success": True, "message": "Bomba apagada"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
 

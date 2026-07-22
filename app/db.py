@@ -22,6 +22,25 @@ def _ensure_columns(conn):
         elif "created_at" not in cols and "timestamp" in cols:
             cur.execute("ALTER TABLE sensor_data ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
             conn.commit()
+
+        # lora_readings table for satellite devices
+        tables = [row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+        if "lora_readings" not in tables:
+            cur.execute("""
+                CREATE TABLE lora_readings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id INTEGER NOT NULL,
+                    device_name TEXT DEFAULT '',
+                    counter INTEGER DEFAULT 0,
+                    s1_temp REAL,
+                    s2_temp REAL,
+                    s3_temp REAL,
+                    rele INTEGER DEFAULT 0,
+                    raw_packet TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            conn.commit()
     except Exception:
         pass
     _migrated = True
